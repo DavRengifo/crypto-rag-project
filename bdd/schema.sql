@@ -1,0 +1,7 @@
+CREATE TABLE cryptos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,       
+    symbol VARCHAR(255) NOT NULL,     
+    price DECIMAL(18, 8) NOT NULL,    
+    date TIMESTAMP DEFAULT CURRENT_TIMESTAMP  
+);
