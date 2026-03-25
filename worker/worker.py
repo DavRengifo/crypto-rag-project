@@ -11,6 +11,17 @@ load_dotenv()
 
 # Configuration of postgres connection using environment variables
 def get_postgres_connection():
+    """
+    Establish a connection to the PostgreSQL database.
+    Reads connection parameters from environment variables:
+        POSTGRES_HOST, POSTGRES_PORT, POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB
+    
+    Args:
+        None
+        
+    Returns:
+        psycopg2 connection object to the Postgres database
+    """
     return psycopg2.connect(
         host=os.getenv("POSTGRES_HOST", "postgres"),
         port=int(os.getenv("POSTGRES_PORT", 5432)),
@@ -62,6 +73,9 @@ def process_task(task_data):
 
     Args:
         task_data : JSON string received from Redis queue
+        
+    Returns:
+        None
     """
     connection = None
     try:
@@ -127,6 +141,9 @@ def main():
 
     Args:
         None
+        
+    Returns:
+        None    
     """
     # Connect to Redis using environment variables (with defaults for local testing)
     # Listen to "crypto_data_queue" for new tasks
@@ -143,7 +160,7 @@ def main():
         task = client.blpop("crypto_data_queue", timeout=5)  
         if task:
             _, task_data = task
-            print(f"Task received, processing...")
+            print("Task received, processing...")
             process_task(task_data)
         else:
             print("Waiting for new tasks...")
