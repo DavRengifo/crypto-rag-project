@@ -138,7 +138,7 @@ class PriceCollector:
             return
         
         payload = data.to_json(orient="records")
-        self.redis_client.rpush("crypto_data_queue", payload)
+        self.redis_client.rpush("prices_queue", payload)
         print(f"Sent {len(data)} rows to Redis queue.")
 
 def main():

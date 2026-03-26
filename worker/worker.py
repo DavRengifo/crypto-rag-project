@@ -65,7 +65,7 @@ def upsert_token(cursor, symbol, name):
     return cursor.fetchone()[0]
 
 # Task processing function
-def process_task(task_data):
+def process_price_task(task_data):
     """
     Process a task from the Redis queue.
     Deserializes the JSON data, then inserts tokens
@@ -132,6 +132,76 @@ def process_task(task_data):
             cursor.close()
             connection.close()
             print("Postgres connection closed.")
+            
+def process_news_task(task_data):
+    """
+    Process a news task from the Redis queue.
+    Deserializes the JSON articles, resolves token_id from symbol,
+    then inserts news articles into the news table.
+
+    Args:
+        task_data : JSON string received from Redis news_queue
+    """
+    connection = None
+    try:
+        #Step 1 : deserialize JSON data BEFORE opening a connection
+        articles = json.loads(task_data)
+        
+        #Step 2 : open connection only if data is valid
+        connection = get_postgres_connection()
+        cursor = connection.cursor()
+        
+        # Step 3 : insert each article, resolving token_id from symbol
+        for article in articles:
+            
+            # 3a. Resolve token_id from symbol
+            # symbol can be None if no currency was tagged
+            token_id = None
+            query = """
+               SELECT id FROM tokens WHERE symbol = %s
+            """
+            
+            if article.get("symbol"):
+                cursor.execute(query, (article["symbol"],))
+                result = cursor.fetchone()
+                token_id = result[0] if result else None
+                
+            # 3b. Insert article - ON CONFLICT DO NOTHING to avoid duplicates
+            insert_query = """
+            INSERT INTO news (token_id, title, content, url, source, published_at)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            ON CONFLICT (url) DO NOTHING
+            """
+            cursor.execute(insert_query, (
+                token_id,
+                article["title"],
+                article.get("content"),
+                article["url"],
+                article["source"],
+                article["published_at"],
+            ))
+            
+        # Step 4 : commit all insertions as a single transaction
+        connection.commit()
+        print(f"{len(articles)} articles inserted.")
+        
+    except json.JSONDecodeError as e:
+        print(f"JSON deserialization error: {e}")
+    except psycopg2.Error as e:
+        print(f"Postgres error: {e}")
+        if connection:
+            connection.rollback()  # Cancel transaction
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        if connection:
+            connection.rollback()  # Cancel transaction
+    finally:
+         # Close the connection cleanly, even if an error occurred
+        if connection and not connection.closed:
+            cursor.close()
+            connection.close()
+            print("Postgres connection closed.")
+    
 
 def main():
     """
@@ -157,11 +227,19 @@ def main():
     while True:
         # blpop = Task recuperation with blocking pop (waits for new tasks in the queue)
         # timeout=5 means it will wait up to 5 seconds for a new task before printing a waiting message
-        task = client.blpop("crypto_data_queue", timeout=5)  
+        task = client.blpop(["prices_queue", "news_queue"], timeout=5)
+
         if task:
-            _, task_data = task
-            print("Task received, processing...")
-            process_task(task_data)
+            queue_name, task_data = task  # queue_name tells where the task came from (prices or news)
+
+            if queue_name == "prices_queue":
+                print("Price task received, processing...")
+                process_price_task(task_data)
+            
+            elif queue_name == "news_queue":
+                print("News task received, processing...")
+                process_news_task(task_data)
+            
         else:
             print("Waiting for new tasks...")
             time.sleep(1)
