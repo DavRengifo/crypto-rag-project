@@ -6,6 +6,7 @@ import time
 import os
 from dotenv import load_dotenv
 import pandas as pd
+from embedding import generate_embedding, EMBEDDING_MODEL
 
 load_dotenv()
 
@@ -171,6 +172,7 @@ def process_news_task(task_data):
             INSERT INTO news (token_id, title, content, url, source, published_at)
             VALUES (%s, %s, %s, %s, %s, %s)
             ON CONFLICT (url) DO NOTHING
+            RETURNING id
             """
             cursor.execute(insert_query, (
                 token_id,
@@ -181,6 +183,20 @@ def process_news_task(task_data):
                 article["published_at"],
             ))
             
+            # 3c. Generate and store embedding if article was inserted (not a duplicate)
+            embedding_query = """
+                INSERT INTO embeddings_news (news_id, embedding, model)
+                VALUES (%s, %s, %s)
+            """
+            result = cursor.fetchone()
+            if result:  # New article was inserted
+                news_id= result[0]
+                text_to_embed = f"{article['title']} {article.get('content', '')}"
+                embedding = generate_embedding(text_to_embed)
+                
+                if embedding:
+                    cursor.execute(embedding_query, (news_id, embedding, EMBEDDING_MODEL))
+                    
         # Step 4 : commit all insertions as a single transaction
         connection.commit()
         print(f"{len(articles)} articles inserted.")
