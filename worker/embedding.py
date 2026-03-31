@@ -9,7 +9,7 @@ load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # Embedding model and dimension
-EMBEDDING_MODEL = "text-embedding-3-small"
+EMBEDDING_MODEL     = "text-embedding-3-small"
 EMBEDDING_DIMENSION = 1536
 
 def generate_embedding(text):

@@ -28,7 +28,7 @@ class NewsCollector:
             port=int(os.getenv("REDIS_PORT", 6379)),
             decode_responses=True
         )
-        self.cryptopanic_url = "https://cryptopanic.com/api/v1/posts/"
+        self.cryptopanic_url = "https://cryptopanic.com/api/developer/v2/posts/"
         self.api_key = os.getenv("CRYPTOPANIC_API_KEY")
         self.session = requests.Session()
 

@@ -35,7 +35,15 @@ class PriceCollector:
             decode_responses=True
         )
         self.coingecko_url = "https://api.coingecko.com/api/v3"
+        self.session = requests.Session()
         
+        # Add CoinGecko API key to headers if available (Demo plan)
+        coingecko_key = os.getenv("COINGECKO_API_KEY")
+        if coingecko_key:
+            self.session.headers.update({
+                "x-cg-demo-api-key": coingecko_key
+            })
+
     def fetch_from_coingecko(self, token_ids=None): 
         """
         Fetch price data from CoinGecko API for a list of tokens.
@@ -58,7 +66,7 @@ class PriceCollector:
             "per_page": 250,
             "sparkline": False
         }
-        response = requests.get(url, params=params)
+        response = self.session.get(url, params=params)
         response.raise_for_status()  # raises exception if status != 200
         coins = response.json()
 
