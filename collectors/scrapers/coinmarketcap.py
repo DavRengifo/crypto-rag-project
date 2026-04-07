@@ -23,13 +23,16 @@ class CryptoScraper:
             None
         """
         load_dotenv()
+        
         self.url = url
         self.scraping_count = 0
         options = webdriver.ChromeOptions()
         options.add_argument('--no-sandbox')
         print(os.getenv("HEADLESS_BOOL"))
+        
         if os.getenv("HEADLESS_BOOL") == "True":
             options.add_argument('--headless')
+            
         options.add_argument('--disable-dev-shm-usage')
         self.driver = webdriver.Chrome(options=options)
         self.driver.maximize_window()
@@ -44,7 +47,9 @@ class CryptoScraper:
         self.driver.get(self.url)
         self.driver.execute_cdp_cmd('Network.clearBrowserCache', {})
         self.driver.execute_script("document.body.style.zoom='25%'")
+        
         time.sleep(1)
+        
         WebDriverWait(self.driver, 10).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, ".cmc-table"))
         )
@@ -59,6 +64,7 @@ class CryptoScraper:
         for _ in range(5):
             self.driver.execute_script("window.scrollBy(0, 400);")
             time.sleep(0.2)
+            
         for _ in range(5):
             self.driver.execute_script("window.scrollBy(0, -400);")
             time.sleep(0.2)

@@ -16,7 +16,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./bdd/schema.sql:/docker-entrypoint-initdb.d/schema.sql
     networks:
-      - my_network
+      - crypto_network
 
   redis:
     image: redis:alpine
@@ -24,47 +24,86 @@ services:
     ports:
       - "6379:6379"
     networks:
-      - my_network
+      - crypto_network
 
   worker:
     build:
       context: ./worker
       dockerfile: Dockerfile
-    container_name: python_worker
-    environment:
-      REDIS_HOST: redis
+    container_name: crypto_worker
     env_file:
       - .env
     networks:
-      - my_network
+      - crypto_network
     depends_on:
       - redis
+      - postgres
 
-  scrapping:
+    scraper:
+      build:
+        context: ./collectors/scrapers
+        dockerfile: Dockerfile
+      container_name: crypto_scraper
+      env_file:
+        - .env
+      ports:
+        - "8001:8001"
+      networks:
+        - crypto_network
+
+  price_collector:
     build:
-      context: ./scrapping
+      context: ./collectors
       dockerfile: Dockerfile
-    container_name: python_scrapper
+    container_name: price_collector
+    command: python price_collector.py
     env_file:
       - .env
     networks:
-      - my_network
+      - crypto_network
     depends_on:
       - redis
+      - scraper
+
+  news_collector:
+    build:
+      context: ./collectors
+      dockerfile: Dockerfile
+    container_name: news_collector
+    command: python news_collector.py
+    env_file:
+      - .env
+    networks:
+      - crypto_network
+    depends_on:
+      - redis
+  
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: crypto_api
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    networks:
+      - crypto_network
+    depends_on:
       - postgres
 
   grafana:
     image: grafana/grafana:latest
     container_name: grafana_container
     ports:
-      - "3000:3000"  # Port d'accès à Grafana
+      - "3000:3000"
     volumes:
-      - grafana_data:/var/lib/grafana  # Sauvegarde des données Grafana
+      - grafana_data:/var/lib/grafana
     networks:
-      - my_network
+      - crypto_network
     environment:
-      - GF_SECURITY_ADMIN_USER=admin  # Nom d'utilisateur par défaut
-      - GF_SECURITY_ADMIN_PASSWORD=admin  # Mot de passe par défaut
+      - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER}
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD}
     depends_on:
       - postgres
 
@@ -73,5 +112,5 @@ volumes:
   grafana_data:
 
 networks:
-  my_network:
+  crypto_network:
     driver: bridge

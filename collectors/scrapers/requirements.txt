@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+selenium
+beautifulsoup4
+lxml
+pandas
+python-dotenv
+chromedriver-autoinstaller

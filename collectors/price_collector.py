@@ -5,7 +5,6 @@ import requests
 import pandas as pd
 from datetime import datetime, UTC
 from dotenv import load_dotenv
-from collectors.scrapers.coinmarketcap import CryptoScraper
 
 load_dotenv()
 
@@ -88,7 +87,8 @@ class PriceCollector:
 
     def fetch_from_scraper(self): 
         """
-        Fallback : fetch price data from CoinMarketCap scraping.
+        Fallback : fetch price data from CoinMarketCap scraping service.
+        Calls the internal scraper microservice via HTTP.
         Called only if CoinGecko API is unavailable.
 
         Args:
@@ -97,11 +97,11 @@ class PriceCollector:
         Returns:
             pd.DataFrame : price data from CoinMarketCap scraper
         """
-        scraper = CryptoScraper("https://coinmarketcap.com/")
-        scraper.load_page()
-        data = scraper.extract_crypto_data()
-        scraper.close()
-        return data
+        scraper_url = os.getenv("SCRAPER_SERVICE_URL", "http://scraper:8001/scrape")
+        response = requests.get(scraper_url, timeout=60)
+        response.raise_for_status()
+        data = response.json()
+        return pd.DataFrame(data)
 
     def fetch_price_data(self):
         """
