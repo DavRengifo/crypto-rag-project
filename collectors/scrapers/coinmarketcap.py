@@ -8,6 +8,13 @@ from dotenv import load_dotenv
 
 
 class CryptoScraper:
+    """
+    Playwright-based scraper for CoinMarketCap price data.
+    Used as a fallback data source when the CoinGecko API is unavailable.
+
+    Args:
+        url : str — URL of the CoinMarketCap page to scrape.
+    """
     def __init__(self, url):
         """
         Initialize CryptoScraper with Playwright instead of Selenium.

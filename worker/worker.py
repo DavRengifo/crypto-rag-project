@@ -143,6 +143,9 @@ def process_news_task(task_data):
 
     Args:
         task_data : JSON string received from Redis news_queue
+        
+    Returns:
+        None
     """
     connection = None
     try:

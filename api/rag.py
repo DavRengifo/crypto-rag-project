@@ -123,7 +123,7 @@ def build_context(articles):
 def generate_answer(question, articles):
     """
     Generate a natural language answer using retrieved articles as context.
-    Sends question + context to GPT-4o-mini and returns the response.
+    Sends question + context to GPT-5.4-mini and returns the response.
 
     Args:
         question : str  — original user question
