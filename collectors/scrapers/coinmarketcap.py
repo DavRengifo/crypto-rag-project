@@ -1,10 +1,6 @@
 import os
 import time
-#import chromedriver_autoinstaller
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+from playwright.sync_api import sync_playwright
 import pandas as pd
 from bs4 import BeautifulSoup
 from datetime import datetime, UTC
@@ -14,7 +10,8 @@ from dotenv import load_dotenv
 class CryptoScraper:
     def __init__(self, url):
         """
-        Initialize class CryptoScraper with URL and set up Selenium WebDriver.
+        Initialize CryptoScraper with Playwright instead of Selenium.
+        Playwright manages its own browser binaries — no system Chrome needed.
 
         Args:
             url (str): The URL of the page to scrape.
@@ -26,16 +23,12 @@ class CryptoScraper:
         
         self.url = url
         self.scraping_count = 0
-        options = webdriver.ChromeOptions()
-        options.add_argument('--no-sandbox')
-        print(os.getenv("HEADLESS_BOOL"))
-        
-        if os.getenv("HEADLESS_BOOL") == "True":
-            options.add_argument('--headless')
-            
-        options.add_argument('--disable-dev-shm-usage')
-        self.driver = webdriver.Chrome(options=options)
-        self.driver.maximize_window()
+        self.playwright = sync_playwright().start()
+        self.browser = self.playwright.chromium.launch(
+            headless=True,
+            args=['--no-sandbox', '--disable-dev-shm-usage']
+        )
+        self.page = self.browser.new_page()
 
     def load_page(self):
         """
@@ -44,15 +37,9 @@ class CryptoScraper:
         Returns:
             None
         """
-        self.driver.get(self.url)
-        self.driver.execute_cdp_cmd('Network.clearBrowserCache', {})
-        self.driver.execute_script("document.body.style.zoom='25%'")
-        
+        self.page.goto(self.url)
+        self.page.wait_for_selector(".cmc-table", timeout=10000)
         time.sleep(1)
-        
-        WebDriverWait(self.driver, 10).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, ".cmc-table"))
-        )
 
     def smooth_scroll(self):
         """
@@ -62,11 +49,11 @@ class CryptoScraper:
             None
         """
         for _ in range(5):
-            self.driver.execute_script("window.scrollBy(0, 400);")
+            self.page.evaluate("window.scrollBy(0, 400);")
             time.sleep(0.2)
             
         for _ in range(5):
-            self.driver.execute_script("window.scrollBy(0, -400);")
+            self.page.evaluate("window.scrollBy(0, -400);")
             time.sleep(0.2)
 
     def extract_crypto_data(self):
@@ -78,7 +65,7 @@ class CryptoScraper:
                         Name, Symbol, Price, MarketCap, Volume24h, Change24h, Date
         """
         self.smooth_scroll()
-        soup = BeautifulSoup(self.driver.page_source, 'html.parser')
+        soup = BeautifulSoup(self.page.content(), 'html.parser')
         
         crypto_div = soup.find('div', class_='sc-7e3c705d-2')        
         if not crypto_div:
@@ -151,9 +138,11 @@ class CryptoScraper:
 
     def close(self):
         """
-        Quit the Selenium WebDriver and release browser resources.
+        Close the browser and stop Playwright.
 
         Returns:
             None
         """
-        self.driver.quit()
+        self.page.close()
+        self.browser.close()
+        self.playwright.stop()

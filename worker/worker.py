@@ -2,6 +2,7 @@ import redis
 import psycopg2
 from psycopg2.extras import execute_values # optimized insertion
 import json
+from io import StringIO
 import time
 import os
 from dotenv import load_dotenv
@@ -82,7 +83,7 @@ def process_price_task(task_data):
     try:
         # Step 1 : deserialize JSON data BEFORE opening a connection
         # (avoids wasting a connection if the data is corrupted)
-        df = pd.read_json(task_data, orient="records")
+        df = pd.read_json(StringIO(task_data), orient="records")
         
         # Convert millisecond timestamps to Python datetime
         if "Date" in df.columns:

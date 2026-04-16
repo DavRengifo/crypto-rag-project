@@ -1,8 +1,7 @@
 fastapi
 uvicorn
-selenium
+playwright
 beautifulsoup4
 lxml
 pandas
 python-dotenv
-chromedriver-autoinstaller

@@ -24,7 +24,7 @@ CREATE TABLE price_snapshots (
 
 CREATE TABLE news (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    token_id        UUID NOT NULL REFERENCES tokens(id) ON DELETE CASCADE,
+    token_id        UUID REFERENCES tokens(id) ON DELETE SET NULL,
     title           TEXT NOT NULL,
     content         TEXT,
     url             TEXT UNIQUE,

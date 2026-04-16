@@ -26,7 +26,7 @@ def generate_embedding(text):
         returns None if generation fails.
     """
     try:
-        response = client.chat.embeddings.create(
+        response = client.embeddings.create(
             model=EMBEDDING_MODEL,
             input=text
         )

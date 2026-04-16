@@ -73,14 +73,17 @@ def search_similar_news(question_embedding, top_k=TOP_K):
         n.url, 
         n.source, 
         n.published_at,
-        e.embedding <=> %s AS distance
+        e.embedding <=> %s::vector AS distance
     FROM embeddings_news e
     JOIN news n ON n.id = e.news_id
     ORDER BY distance
     LIMIT %s
     """
-
-    cursor.execute(similar_news_search_query, (question_embedding, TOP_K))
+    
+    # Convert embedding into string format pgvector
+    embedding_str = "[" + ",".join(map(str, question_embedding)) + "]"
+    
+    cursor.execute(similar_news_search_query, (embedding_str, TOP_K))
     results = cursor.fetchall()
     
     cursor.close()
@@ -93,7 +96,8 @@ def search_similar_news(question_embedding, top_k=TOP_K):
             "content"       : row[1],
             "url"           : row[2],
             "source"        : row[3],
-            "published_at"  : row[4]
+            "published_at"  : row[4],
+            "distance"      : row[5]
         })
     return articles
 

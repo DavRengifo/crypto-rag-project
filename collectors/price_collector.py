@@ -145,7 +145,7 @@ class PriceCollector:
             print("No data to send to Redis.")
             return
         
-        payload = data.to_json(orient="records")
+        payload = data.to_json(orient="records", date_format="iso")
         self.redis_client.rpush("prices_queue", payload)
         print(f"Sent {len(data)} rows to Redis queue.")
 
@@ -159,11 +159,12 @@ def main():
     """
     collector = PriceCollector()
 
-    print("Starting PriceCollector...")
+    print("Starting PriceCollector...", flush=True)
     
     while True:
         price_data = collector.fetch_price_data()
         collector.send_to_redis(price_data)
+        print(f"Cycle complete. Sleeping 5 minutes...", flush=True)
         time.sleep(300)  # Wait for 5 minutes before next fetch
             
 if __name__ == "__main__":

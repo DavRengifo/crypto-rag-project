@@ -3,16 +3,24 @@ import time
 import redis
 import requests
 import json
+import feedparser
 from dotenv import load_dotenv
 from bs4 import BeautifulSoup
 
 
 load_dotenv()
 
+# RSS feeds for crypto news — replaces CryptoPanic API (discontinued April 2026)
+RSS_FEEDS = [
+    "https://www.coindesk.com/arc/outboundfeeds/rss/",
+    "https://cointelegraph.com/rss",
+    "https://decrypt.co/feed",
+]
+
 class NewsCollector:
     """
     Collects cryptocurrency news with content extraction.
-    Primary source  : CryptoPanic API (discovery)
+    Primary source  : RSS feed (CoinDesk, CoinTelegraph, Decrypt)
     Content source  : BeautifulSoup (full article text from URL)
     """
 
@@ -28,13 +36,12 @@ class NewsCollector:
             port=int(os.getenv("REDIS_PORT", 6379)),
             decode_responses=True
         )
-        self.cryptopanic_url = "https://cryptopanic.com/api/developer/v2/posts/"
-        self.api_key = os.getenv("CRYPTOPANIC_API_KEY")
         self.session = requests.Session()
 
     def fetch_news(self, symbol=None):
         """
-        Fetch latest news from CryptoPanic API.
+        Fetch latest news from RSS feeds.
+        Replaces CryptoPanic API (discontinued free plan April 2026).
 
         Args:
             symbol : token symbol to filter news (e.g. 'BTC'), None for all news
@@ -42,31 +49,30 @@ class NewsCollector:
         Returns:
             list : list of dicts with keys title, url, source, published_at, symbol
         """
-        params = {
-            "auth_token": self.api_key,
-            "public": "true",
-            "kind": "news",
-        }
-        if symbol:
-            params["currencies"] = symbol
-
-        response = self.session.get(self.cryptopanic_url, params=params)
-        response.raise_for_status()
-        posts = response.json().get("results", [])
-        if not posts:
-            return []
-
         news = []
-        for post in posts:
-            news.append({
-                "title"         : post["title"],
-                "url"           : post["url"],
-                "source"        : post["source"]["title"],
-                "published_at"  : post["published_at"],
-                "symbol"        : post["currencies"][0]["code"] if post.get("currencies") else None
-            })
+
+        for feed_url in RSS_FEEDS:
+            try:
+                feed = feedparser.parse(feed_url)
+                for entry in feed.entries[:10]:
+                    title = entry.get("title", "")
+                    
+                    # Filter by symbol if provided
+                    if symbol and symbol.upper() not in title.upper():
+                        continue 
+
+                    news.append({
+                        "title"         : title,
+                        "url"           : entry.get("link", ""),
+                        "source"        : feed.feed.get("title", feed_url),
+                        "published_at"  : entry.get("published", ""),
+                        "symbol"       : symbol
+                    })
+            except Exception as e:
+                print(f"RSS feed failed for {feed_url}: {e}")
+
         return news
-    
+
     def fetch_article_content(self, url):
         """
         Fetch full article content from URL using BeautifulSoup.

@@ -1,11 +1,8 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import Any
-import sys
+from rag import ask
 import os
-
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # Add root directory to path
-from api.rag import ask
 
 app = FastAPI(
     title="Crypto RAG API",

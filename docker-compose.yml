@@ -1,4 +1,4 @@
-version: '3.8'
+#version: '3.8'
 
 services:
   postgres:
@@ -38,18 +38,18 @@ services:
     depends_on:
       - redis
       - postgres
-
-    scraper:
-      build:
-        context: ./collectors/scrapers
-        dockerfile: Dockerfile
-      container_name: crypto_scraper
-      env_file:
-        - .env
-      ports:
-        - "8001:8001"
-      networks:
-        - crypto_network
+      
+  scraper:
+    build:
+      context: ./collectors/scrapers
+      dockerfile: Dockerfile
+    container_name: crypto_scraper
+    env_file:
+      - .env
+    ports:
+      - "8001:8001"
+    networks:
+      - crypto_network
 
   price_collector:
     build:
