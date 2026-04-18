@@ -162,10 +162,15 @@ def main():
     print("Starting PriceCollector...", flush=True)
     
     while True:
-        price_data = collector.fetch_price_data()
-        collector.send_to_redis(price_data)
-        print(f"Cycle complete. Sleeping 5 minutes...", flush=True)
-        time.sleep(300)  # Wait for 5 minutes before next fetch
+        try:
+            price_data = collector.fetch_price_data()
+            collector.send_to_redis(price_data)
+            print(f"Cycle complete. Sleeping 5 minutes...", flush=True)
+        
+        except Exception as e:
+            print(f"Cycle failed: {e}. Retrying in 5 minutes...", flush=True)
+            
+        time.sleep(300)  # Wait for 5 minutes before retrying
             
 if __name__ == "__main__":
     main()
