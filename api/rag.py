@@ -194,3 +194,96 @@ def ask(question):
                 }
                 for a in articles
             ]}
+
+def get_summary(
+    symbols: list[str],
+    prices_data: list[dict],
+    news_articles: list[dict],
+    price_histories: list[dict],
+    period: str = "24h"
+) -> str:
+    """
+    Generate an AI-powered market report for one or multiple tokens.
+    Uses price history and recent news for trend analysis.
+
+    Args:
+        symbols        : list of token symbols (e.g. ['BTC', 'ETH'])
+        prices_data    : list of current price dicts
+        news_articles  : list of recent news dicts
+        price_histories: list of historical price points per token
+        period         : analysis period
+
+    Returns:
+        str : generated markdown report
+    """
+    
+    # Step 1 — Build price context with trend
+    
+    price_context = ""
+    
+    for p in prices_data:
+        history = price_histories.get(p['symbol'], [])
+        if history:
+            oldest = history[0]['price_usd']
+            newest = history[-1]['price_usd']
+            trend_pct = ((newest - oldest) / oldest) * 100
+            trend_str = f"{'▲' if trend_pct >= 0 else '▼'} {abs(trend_pct):.1f}% over {period}"
+        else:
+            trend_str = "no history available"
+            
+        price_context += f"""
+            {p['symbol']} ({p['name']})
+            Current price : ${p['price_usd']:,.2f}
+            24h change    : {p['change_24h']:+.2f}%
+            Market cap    : ${p['market_cap']:,.0f}
+            Volume 24h    : ${p['volume_24h']:,.0f}
+            Trend {period}  : {trend_str}
+        """
+    
+    # Step 2 — Build news context
+    
+    news_context = "\n".join([
+        f"- [{a['source']}] {a['title']}"
+        for a in news_articles[:10]
+    ])
+
+    is_general = len(symbols) > 3
+    scope = "the overall crypto market" if is_general else ", ".join(symbols)
+
+    prompt = f"""
+        You are a professional cryptocurrency market analyst.
+        Generate a structured report for {scope} covering the last {period}.
+
+        PRICE DATA:
+        {price_context}
+
+        RECENT NEWS:
+        {news_context}
+
+        Write a structured report including:
+        1. Executive Summary (2-3 sentences)
+        2. Price Analysis (trend, key levels, momentum)
+        3. News Impact (how news affected prices)
+        4. Beginner Insight (simple explanation of what's happening)
+        5. Expert Insight (technical/macro perspective)
+        6. Outlook (short-term expectation based on data)
+        7. Risk Disclaimer
+
+        Be factual, cite news sources, use the actual price numbers provided.
+        Format in clean markdown.
+    """
+    
+    # Step 3 — generate report
+    
+    response = client.chat.completions.create(
+        model=LLM_MODEL,
+        messages=[
+            {
+                "role"   : "system",
+                "content": "You are a professional crypto analyst. Always base your analysis strictly on provided data."
+            },
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.3,
+    )
+    return response.choices[0].message.content.strip()  

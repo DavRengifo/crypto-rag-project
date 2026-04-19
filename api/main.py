@@ -311,9 +311,13 @@ def get_stats():
     }
 
 @app.get("/news", response_model=list[NewsItem])
-def get_news():
+def get_news(symbol:  Optional[str] = None):
     """
     Return the 20 most recent news articles, ordered by published date.
+    Optionally filter by token symbol.
+    
+    Args:
+        symbol (str, optional) : filter by token symbol (e.g. 'BTC')
     
     Returns:
         list[NewsItem] : List of news articles with title, source, url, and published date.
@@ -321,13 +325,25 @@ def get_news():
     connection = get_postgres_connection()
     cursor = connection.cursor()
     
-    query = """
-    SELECT title, source, url, published_at
-    FROM news
-    ORDER BY published_at DESC
-    LIMIT 20
-    """
-    cursor.execute(query)
+    if symbol:
+        query = """
+        SELECT n.title, n.source, n.url, n.published_at
+        FROM news n
+        JOIN tokens t ON t.id = n.token_id
+        WHERE t.symbol = %s
+        ORDER BY n.published_at DESC
+        LIMIT 20
+        """
+        cursor.execute(query, (symbol.upper(),))
+    else:
+        query = """
+        SELECT title, source, url, published_at
+        FROM news
+        ORDER BY published_at DESC
+        LIMIT 20
+        """
+        cursor.execute(query)
+        
     rows = cursor.fetchall()
     cursor.close()
     connection.close()
@@ -340,7 +356,7 @@ def get_news():
             published_at =row[3].isoformat() if row[3] else None
         )
         for row in rows
-    ]
+    ] 
 
 @app.get("/health")
 def health_check():

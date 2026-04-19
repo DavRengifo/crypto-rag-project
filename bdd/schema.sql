@@ -41,12 +41,22 @@ CREATE TABLE embeddings_news (
     created_at      TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE reports (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    token_id    UUID REFERENCES tokens(id) ON DELETE SET NULL,
+    report_type VARCHAR(20) DEFAULT 'daily',  -- 'daily', 'weekly', 'market'
+    content     TEXT NOT NULL,                -- rapport généré par LLM
+    generated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Classical indexes
 
 CREATE INDEX ON price_snapshots (token_id, scraped_at DESC);
 CREATE INDEX ON news            (token_id, published_at DESC);
 CREATE INDEX ON news            (scraped_at DESC);
 CREATE INDEX ON news            (source);
+CREATE INDEX ON reports         (token_id, generated_at DESC);
+CREATE INDEX ON reports         (report_type, generated_at DESC);
 
 -- Vectorial Indexes
 
