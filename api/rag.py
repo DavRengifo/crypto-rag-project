@@ -2,6 +2,7 @@ import os
 import psycopg2
 from openai import OpenAI
 from dotenv import load_dotenv
+from db import get_postgres_connection
 
 load_dotenv()
 
@@ -10,24 +11,6 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 EMBEDDING_MODEL = "text-embedding-3-small"
 LLM_MODEL       = "gpt-5.4-mini"
 TOP_K           = 5    # number of articles to retrieve for RAG
-
-def get_postgres_connection():
-    """
-    Establishes a connection to the Postgres database using environment variables.
-    
-    Args:
-        None
-        
-    Returns:
-        connection: A psycopg2 connection object to the Postgres database.
-    """
-    return psycopg2.connect(
-        host=os.getenv("POSTGRES_HOST", "postgres"),
-        port=int(os.getenv("POSTGRES_PORT", 5432)),
-        dbname=os.getenv("POSTGRES_DB"),
-        user=os.getenv("POSTGRES_USER"),
-        password=os.getenv("POSTGRES_PASSWORD")
-    )
     
 def embed_question(question):
     """
@@ -64,42 +47,45 @@ def search_similar_news(question_embedding, top_k=TOP_K):
         each with keys: title, content, url, source, published_at.
     """
     connection = get_postgres_connection()
-    cursor = connection.cursor()
+    try:
+        cursor = connection.cursor()
 
-    similar_news_search_query = """
-    SELECT 
-        n.title, 
-        n.content, 
-        n.url, 
-        n.source, 
-        n.published_at,
-        e.embedding <=> %s::vector AS distance
-    FROM embeddings_news e
-    JOIN news n ON n.id = e.news_id
-    ORDER BY distance
-    LIMIT %s
-    """
+        similar_news_search_query = """
+        SELECT 
+            n.title, 
+            n.content, 
+            n.url, 
+            n.source, 
+            n.published_at,
+            e.embedding <=> %s::vector AS distance
+        FROM embeddings_news e
+        JOIN news n ON n.id = e.news_id
+        ORDER BY distance
+        LIMIT %s
+        """
+        
+        # Convert embedding into string format pgvector
+        embedding_str = "[" + ",".join(map(str, question_embedding)) + "]"
+        
+        cursor.execute(similar_news_search_query, (embedding_str, top_k))
+        results = cursor.fetchall()
+        
+        cursor.close()
+        
+        articles = []
+        for row in results:
+            articles.append({
+                "title"         : row[0],
+                "content"       : row[1],
+                "url"           : row[2],
+                "source"        : row[3],
+                "published_at"  : row[4],
+                "distance"      : row[5]
+            })
+        return articles
     
-    # Convert embedding into string format pgvector
-    embedding_str = "[" + ",".join(map(str, question_embedding)) + "]"
-    
-    cursor.execute(similar_news_search_query, (embedding_str, TOP_K))
-    results = cursor.fetchall()
-    
-    cursor.close()
-    connection.close()
-    
-    articles = []
-    for row in results:
-        articles.append({
-            "title"         : row[0],
-            "content"       : row[1],
-            "url"           : row[2],
-            "source"        : row[3],
-            "published_at"  : row[4],
-            "distance"      : row[5]
-        })
-    return articles
+    finally:
+        connection.close()
 
 def build_context(articles):
     """
@@ -196,28 +182,33 @@ def ask(question):
             ]}
 
 def get_summary(
-    symbols: list[str],
-    prices_data: list[dict],
-    news_articles: list[dict],
-    price_histories: list[dict],
-    period: str = "24h"
+    symbols:            list[str],
+    prices_data:        list[dict],
+    news_articles:      list[dict],
+    price_histories:    dict[str, list[dict]],
+    period:             str = "1y",
+    previous_reports:   list[str] | None = None
 ) -> str:
     """
     Generate an AI-powered market report for one or multiple tokens.
-    Uses price history and recent news for trend analysis.
+    Uses price history, recent news, and previous reports for trend analysis.
+    When previous reports exist, only recent data (24h) is needed.
+    When no previous reports exist, full historical data (1Y) is used.
 
     Args:
-        symbols        : list of token symbols (e.g. ['BTC', 'ETH'])
-        prices_data    : list of current price dicts
-        news_articles  : list of recent news dicts
-        price_histories: list of historical price points per token
-        period         : analysis period
+        symbols          : list of token symbols (e.g. ['BTC', 'ETH'])
+        prices_data      : list of current price dicts
+        news_articles    : list of recent news dicts
+        price_histories  : dict of historical price points indexed by symbol
+                           e.g. {"BTC": [{price_usd: ..., scraped_at: ...}, ...]}
+        period           : analysis period for trend calculation (default: 1y)
+        previous_reports : list of previous report contents (max 2), or None
 
     Returns:
         str : generated markdown report
     """
     
-    # Step 1 — Build price context with trend
+    # Step 1 — Build price context with trend per token
     
     price_context = ""
     
@@ -247,33 +238,70 @@ def get_summary(
         for a in news_articles[:10]
     ])
 
+    # Step 3 — Build previous reports context if available
+    # Truncated to 800 chars each to control token cost
+    previous_context = ""
+    if previous_reports:
+        summaries = "\n\n---\n\n".join(
+            f"Report from {i + 1} day(s) ago:\n{r[:800]}"
+            for i, r in enumerate(previous_reports)
+        )
+        previous_context = f"""
+            PREVIOUS REPORTS (for continuity and trend comparison):
+            {summaries}
+        """
+        
+    # Step 4 — Build analysis instruction based on context availability
+    # If previous reports exist, instruct the LLM to compare and update
+    # If not, instruct a full baseline analysis
+    if previous_reports:
+        instruction = f"""
+            You have access to previous daily reports above.
+            Focus on what has CHANGED since the last report.
+            Compare current prices and news to the previous context.
+            Highlight new developments, trend reversals, or confirmations.
+        """
+    else:
+        instruction = f"""
+            This is the first report — no previous context exists.
+            Provide a comprehensive baseline analysis covering the full {period} period.
+            Be thorough. This report will serve as the reference for all future reports.
+        """
+    
+    # Step 5 — Determine report scope
     is_general = len(symbols) > 3
     scope = "the overall crypto market" if is_general else ", ".join(symbols)
-
+    
+    # Step 6 — Build single unified prompt
     prompt = f"""
         You are a professional cryptocurrency market analyst.
-        Generate a structured report for {scope} covering the last {period}.
+        Generate a structured daily report for {scope}.
 
-        PRICE DATA:
+        {previous_context}
+
+        CURRENT PRICE DATA:
         {price_context}
 
         RECENT NEWS:
         {news_context}
 
+        {instruction}
+
         Write a structured report including:
         1. Executive Summary (2-3 sentences)
         2. Price Analysis (trend, key levels, momentum)
         3. News Impact (how news affected prices)
-        4. Beginner Insight (simple explanation of what's happening)
-        5. Expert Insight (technical/macro perspective)
-        6. Outlook (short-term expectation based on data)
-        7. Risk Disclaimer
+        4. What Changed Since Last Report (skip this section if no previous reports)
+        5. Beginner Insight (simple explanation of what is happening)
+        6. Expert Insight (technical and macro perspective)
+        7. Outlook (short-term expectation based on data)
+        8. Risk Disclaimer
 
         Be factual, cite news sources, use the actual price numbers provided.
         Format in clean markdown.
-    """
-    
-    # Step 3 — generate report
+    """     
+        
+    # Step 7 — Generate report via LLM
     
     response = client.chat.completions.create(
         model=LLM_MODEL,

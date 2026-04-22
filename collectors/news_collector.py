@@ -4,6 +4,7 @@ import redis
 import requests
 import json
 import feedparser
+from email.utils import parsedate_to_datetime 
 from dotenv import load_dotenv
 from bs4 import BeautifulSoup
 
@@ -61,13 +62,23 @@ class NewsCollector:
                     if symbol and symbol.upper() not in title.upper():
                         continue 
 
+                    # Parse RSS date string (RFC 2822) into ISO 8601
+                    # e.g. "Thu, 18 Apr 2026 12:00:00 +0000" → "2026-04-18T12:00:00+00:00"
+                    raw_date = entry.get("published", "")
+                    try:
+                        dt = parsedate_to_datetime(raw_date)
+                        published_at = dt.isoformat()
+                    except Exception:
+                        published_at = None   # None if date is missing or malformed
+                    
                     news.append({
                         "title"         : title,
                         "url"           : entry.get("link", ""),
                         "source"        : feed.feed.get("title", feed_url),
-                        "published_at"  : entry.get("published", ""),
+                        "published_at"  : published_at,
                         "symbol"       : symbol
                     })
+                    
             except Exception as e:
                 print(f"RSS feed failed for {feed_url}: {e}")
 
@@ -101,6 +112,7 @@ class NewsCollector:
                     return selector.get_text(strip=True)
                 
             return None  # Return None if no content found
+        
         except Exception as e:
             print(f"Content extraction failed for {url}: {e}")
             return None

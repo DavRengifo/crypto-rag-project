@@ -96,6 +96,20 @@ services:
     depends_on:
       - postgres
 
+  report_generator:
+    build:
+      context: ./report_generator
+      dockerfile: Dockerfile
+    container_name: report_generator
+    env_file:
+      - .env
+    networks:
+      - crypto_network
+    depends_on:
+      - postgres
+      - api
+    restart: unless-stopped
+
   grafana:
     image: grafana/grafana:latest
     container_name: grafana_container

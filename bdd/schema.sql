@@ -42,11 +42,12 @@ CREATE TABLE embeddings_news (
 );
 
 CREATE TABLE reports (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    token_id    UUID REFERENCES tokens(id) ON DELETE SET NULL,
-    report_type VARCHAR(20) DEFAULT 'daily',  -- 'daily', 'weekly', 'market'
-    content     TEXT NOT NULL,                -- rapport généré par LLM
-    generated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    token_id        UUID REFERENCES tokens(id) ON DELETE SET NULL,
+    symbols         TEXT[],
+    report_type     VARCHAR(20) DEFAULT 'daily',
+    content         TEXT NOT NULL,
+    generated_at    TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Classical indexes
@@ -58,6 +59,9 @@ CREATE INDEX ON news            (source);
 CREATE INDEX ON reports         (token_id, generated_at DESC);
 CREATE INDEX ON reports         (report_type, generated_at DESC);
 
--- Vectorial Indexes
+-- GIN index for efficient array search on reports.symbols
+-- Used by: WHERE symbols @> ARRAY['BTC', 'ETH']
+CREATE INDEX ON reports USING gin (symbols);
 
+-- Vector index for semantic similarity search
 CREATE INDEX ON embeddings_news USING hnsw (embedding vector_cosine_ops);

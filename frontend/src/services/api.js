@@ -25,7 +25,7 @@ export const getTopMovers = async () => {
 };
 
 export const getCryptoNews = async (symbol) => {
-    const response = await fetch(`${API_URL}/news/${symbol}`)
+    const response = await fetch(`${API_URL}/news?symbol=${symbol}`)
     if (!response.ok) {
         throw new Error(`Failed to fetch news for ${symbol}`);
     }
