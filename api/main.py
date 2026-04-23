@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 import hashlib
 import json as json_module
 import redis
+from fastapi.middleware.cors import CORSMiddleware
 
 # Constants
 
@@ -17,7 +18,7 @@ PERIOD_MAP = {
     "7d" : timedelta(days=7),
     "30d": timedelta(days=30),
     "1y" : timedelta(days=365),
-    "5y" : timedelta(days=1825),
+    #"5y" : timedelta(days=1825),# "5y" deleted — CoinGecko free tier max 365 days
 }
 
 # Mapping from token symbol to CoinGecko ID
@@ -38,6 +39,14 @@ app = FastAPI(
     title="Crypto RAG API",
     description="API for Retrieval-Augmented Generation (RAG) on cryptocurrency news and prices.",
     version="1.0.0"
+)
+
+# CORS — allow frontend to call the API from the browser
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3002", "http://localhost:3000"],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Redis client for report caching

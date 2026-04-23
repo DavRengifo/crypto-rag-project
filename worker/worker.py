@@ -1,6 +1,5 @@
 import redis
 import psycopg2
-from psycopg2.extras import execute_values # optimized insertion
 import json
 from io import StringIO
 import time
@@ -158,24 +157,34 @@ def process_news_task(task_data):
         
         # Step 3 : insert each article, resolving token_id from symbol
         for article in articles:
-            
+
             # 3a. Resolve token_id from symbol
             # symbol can be None if no currency was tagged
             token_id = None
             query = """
                SELECT id FROM tokens WHERE symbol = %s
             """
-            
-            if article.get("symbol"):
-                cursor.execute(query, (article["symbol"],))
+
+            symbol = article.get("symbol")
+            if symbol:
+                cursor.execute(query, (symbol,))
                 result = cursor.fetchone()
                 token_id = result[0] if result else None
-                
-            # 3b. Insert article - ON CONFLICT DO NOTHING to avoid duplicates
+                if token_id:
+                    print(f"  [NEWS] symbol={symbol} → token_id={token_id}")
+                else:
+                    print(f"  [NEWS] symbol={symbol} → token NOT FOUND in DB (tokens table may be empty)")
+            else:
+                print(f"  [NEWS] no symbol detected for: {article['title'][:60]}")
+
+            # 3b. Insert article — ON CONFLICT DO UPDATE so that articles initially
+            # inserted with token_id=NULL get their token_id set on the next cycle
+            # once the tokens table is populated by the price worker.
             insert_query = """
             INSERT INTO news (token_id, title, content, url, source, published_at)
             VALUES (%s, %s, %s, %s, %s, %s)
-            ON CONFLICT (url) DO NOTHING
+            ON CONFLICT (url) DO UPDATE
+                SET token_id = COALESCE(EXCLUDED.token_id, news.token_id)
             RETURNING id
             """
             cursor.execute(insert_query, (

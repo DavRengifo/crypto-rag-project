@@ -1,10 +1,11 @@
 import os
+import re
 import time
 import redis
 import requests
 import json
 import feedparser
-from email.utils import parsedate_to_datetime 
+from email.utils import parsedate_to_datetime
 from dotenv import load_dotenv
 from bs4 import BeautifulSoup
 
@@ -119,26 +120,50 @@ class NewsCollector:
         
     def fetch(self):
         """
-        Fetch news and enrich each article with full content.
+        Fetch news from RSS feeds and enrich each article with full content.
+        Detects crypto symbols mentioned in article titles for token association.
         
         Args:
             None
         Returns:
             list : list of enriched article dicts
         """
+        SYMBOLS = ["BTC", "ETH", "SOL", "BNB", "XRP", "DOGE", "ADA", "DOT",
+            "Bitcoin", "Ethereum", "Solana", "BNB", "Ripple", "Dogecoin",
+            "Cardano", "Polkadot"]
+
+        SYMBOL_MAP = {
+            "Bitcoin" : "BTC", "Ethereum": "ETH", "Solana"  : "SOL",
+            "Ripple"  : "XRP", "Dogecoin": "DOGE","Cardano" : "ADA",
+            "Polkadot": "DOT"
+        }
+        
         news = self.fetch_news()
         articles = []
         
         for article in news:
             content = self.fetch_article_content(article["url"])
+            
+            # Detect which symbol is mentioned in the title.
+            # \b ensures whole-word match: "ADA" won't fire on "ADAM", "SOL" won't fire on "SOLUTION".
+            detected_symbol = None
+            for sym in SYMBOLS:
+                if re.search(r'\b' + re.escape(sym) + r'\b', article["title"], re.IGNORECASE):
+                    detected_symbol = SYMBOL_MAP.get(sym, sym.upper())
+                    break
+                
+            print(f"  [COLLECTOR] [{detected_symbol or 'NONE':>5}] {article['title'][:70]}")
             articles.append({
                 "title"             : article["title"],
                 "url"               : article["url"],
                 "source"            : article["source"],
                 "published_at"      : article["published_at"],
-                "symbol"            : article["symbol"],
+                "symbol"            : detected_symbol,
                 "content"           : content
             })
+
+        detected = sum(1 for a in articles if a["symbol"])
+        print(f"[COLLECTOR] fetch complete — {len(articles)} articles, {detected} with symbol detected")
         return articles
     
     def send_to_redis(self, articles):

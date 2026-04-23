@@ -24,32 +24,40 @@ export const getTopMovers = async () => {
     return response.json();
 };
 
-export const getCryptoNews = async (symbol) => {
-    const response = await fetch(`${API_URL}/news?symbol=${symbol}`)
-    if (!response.ok) {
-        throw new Error(`Failed to fetch news for ${symbol}`);
-    }
-    return response.json();
-};
-
-export const getNews = async () => {
-    const response = await fetch(`${API_URL}/news`)
-    if (!response.ok) {
-        throw new Error('Failed to fetch news');
-    }
-    return response.json();
-};
-
-export const getSummary = async (symbol, options = {}) => {
-    const params = new URLSearchParams()
-    if (options.includeNews) params.append('include_news', 'true')
-    if (options.includeSentiment) params.append('include_sentiment', 'true')
-    
-    const url = `${API_URL}/summary/${symbol}?${params}`
-    const response = await fetch(url)
-    if (!response.ok) throw new Error(`Failed to fetch summary for ${symbol}`)
+export const getStats = async () => {
+    const response = await fetch(`${API_URL}/stats`)
+    if (!response.ok) throw new Error('Failed to fetch stats')
     return response.json()
-}
+};
+
+export const getNews = async (symbol = null) => {
+    const url = symbol ? `${API_URL}/news?symbol=${symbol}` : `${API_URL}/news`
+    const response = await fetch(url)
+    if (!response.ok) {
+        throw new Error('Failed to fetch news')
+    }
+    return response.json()
+};
+
+export const getMarketReport = async () => {
+    const response = await fetch(`${API_URL}/reports/market/latest`)
+    if (!response.ok) {
+        throw new Error('Failed to fetch market report')
+    }
+    return response.json()
+};
+
+export const generateReport = async (symbols, period = '1y') => {
+    const response = await fetch(`${API_URL}/reports/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ symbols, period })
+    })
+    if (!response.ok) {
+        throw new Error('Failed to generate report')
+    }
+    return response.json()
+};
 
 export const askQuestion = async (question) => {
     const response = await fetch(`${API_URL}/ask`, {

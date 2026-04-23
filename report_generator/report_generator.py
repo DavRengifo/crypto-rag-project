@@ -111,48 +111,68 @@ def generate_daily_market_report():
     print(f"[{datetime.now()}]) Generating daily market report...", flush=True)
     
     try:
-        #Invalidate Redis cache for ALL_SYMBOLS before generating
-        # Without this, the API returns a cached report instead of inserting a new one
-        # which would prevent the UPDATE from finding a fresh 'custom' report
+        # Invalidate Redis cache for ALL_SYMBOLS before generating.
+        # Without this, the API returns a cached report instead of inserting a new one,
+        # which means there is no fresh 'custom' row to relabel as 'market'.
         redis_client = redis.Redis(
-            host           = os.getenv("REDIS_HOST", "redis"),
-            port           = int(os.getenv("REDIS_PORT", 6379)),
+            host            = os.getenv("REDIS_HOST", "redis"),
+            port            = int(os.getenv("REDIS_PORT", 6379)),
             decode_responses= True
         )
         cache_key = f"report:{hashlib.md5(json.dumps(sorted(ALL_SYMBOLS)).encode()).hexdigest()}"
         redis_client.delete(cache_key)
-        print(f"Cache invalidated for ALL_SYMBOLS.", flush=True)
-        
-        # Call the internal API with all tracked symbols
-        # The API service handles all data fetching and LLM generation
+        print(f"[REPORT] Cache invalidated. ALL_SYMBOLS={ALL_SYMBOLS}", flush=True)
+
+        # Call the internal API with all tracked symbols.
+        # The API handles data fetching, LLM generation, and DB INSERT (as 'custom').
         response = requests.post(
             "http://api:8000/reports/generate",
             json={"symbols": ALL_SYMBOLS, "period": "1y"},
-            timeout=180 
+            timeout=180
         )
         response.raise_for_status()
-        
-        # Relabel the fresh 'custom' report as 'market'
+        print(f"[REPORT] API responded OK — relabelling 'custom' → 'market'.", flush=True)
+
+        # Relabel the fresh report: SELECT the most recent 'custom' row matching
+        # ALL_SYMBOLS (within the last hour), then UPDATE by ID.
+        # Using ID avoids the 5-minute race condition of the previous implementation.
         connection = get_postgres_connection()
         try:
             cursor = connection.cursor()
+
+            # Find the most recently inserted custom report for exactly ALL_SYMBOLS
             cursor.execute("""
-                UPDATE reports
-                SET report_type = 'market'
+                SELECT id, generated_at FROM reports
                 WHERE report_type = 'custom'
                     AND symbols = %s::text[]
-                    AND generated_at >= NOW() - INTERVAL '5 minutes'
+                    AND generated_at >= NOW() - INTERVAL '1 hour'
+                ORDER BY generated_at DESC
+                LIMIT 1
             """, (ALL_SYMBOLS,))
-            updated = cursor.rowcount
+            row = cursor.fetchone()
+
+            if row:
+                report_id, generated_at = row
+                print(f"[REPORT] Found custom report id={report_id} generated_at={generated_at}", flush=True)
+                cursor.execute(
+                    "UPDATE reports SET report_type = 'market' WHERE id = %s",
+                    (report_id,)
+                )
+                updated = cursor.rowcount
+            else:
+                updated = 0
+                print(f"[REPORT] WARNING: no 'custom' report found for ALL_SYMBOLS in the last hour.", flush=True)
+                print(f"[REPORT] ALL_SYMBOLS sent to DB: {ALL_SYMBOLS}", flush=True)
+
             connection.commit()
             cursor.close()
         finally:
             connection.close()
-            
+
         if updated == 0:
-            print(f"[{datetime.now(timezone.utc)}] WARNING: UPDATE found no report to relabel.", flush=True)
+            print(f"[{datetime.now(timezone.utc)}] WARNING: UPDATE changed no rows.", flush=True)
         else:
-            print(f"[{datetime.now(timezone.utc)}] Market report generated successfully.", flush=True)
+            print(f"[{datetime.now(timezone.utc)}] Market report generated and saved successfully.", flush=True)
         
     except Exception as e:
         print(f"[{datetime.now()}] Failed to generate market report: {e}", flush=True)

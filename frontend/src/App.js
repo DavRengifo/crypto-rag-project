@@ -8,8 +8,8 @@ import ChatRAG from './components/ChatRAG'
 import './App.css'
 
 function App() {
-  // selectedSymbol est partagé entre PriceChart et NewsPanel
-  // quand l'utilisateur clique sur BTC → chart BTC + news BTC
+  // selectedSymbol is shared between PriceChart and NewsPanel
+  // when user click on BTC → chart BTC + news BTC
   const [selectedSymbol, setSelectedSymbol] = useState('BTC')
 
   return (
@@ -20,22 +20,22 @@ function App() {
       </header>
 
       <main className="app-main">
-        {/* Ligne 1 : compteurs système */}
+        {/* Row 1: system counters */}
         <StatsBar />
 
-        {/* Ligne 2 : prix en temps réel — cliquable pour changer selectedSymbol */}
+        {/* Row 2: real-time prices — clickable to change selectedSymbol */}
         <PriceCards
           selectedSymbol={selectedSymbol}
           onSymbolSelect={setSelectedSymbol}
         />
 
-        {/* Ligne 3 : graphique + top movers */}
+        {/* Row 3: chart + top movers */}
         <div className="row-two-cols">
           <PriceChart symbol={selectedSymbol} />
           <TopMovers onSymbolSelect={setSelectedSymbol} />
         </div>
 
-        {/* Ligne 4 : RAG chat + news */}
+        {/* Row 4: RAG chat + news */}
         <div className="row-two-cols">
           <ChatRAG />
           <NewsPanel symbol={selectedSymbol} />
