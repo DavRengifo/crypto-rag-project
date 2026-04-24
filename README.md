@@ -22,26 +22,47 @@ Answer   : "Bitcoin is rebounding this week, holding above $74,000 after breakin
 Sources  : CoinDesk (Apr 15), CoinTelegraph (Apr 14)
 
 ## Architecture
-┌─────────────────────────────────────────────────────┐
-│                    Data Collection                  │
-│  CoinGecko API ──► price_collector ──► Redis Queue  │
-│  RSS Feeds     ──► news_collector  ──►              │
-└─────────────────────────┬───────────────────────────┘
-                          │
-                          ▼
-┌─────────────────────────────────────────────────────┐
-│                      Worker                         │
-│  Redis Queue ──► Insert Postgres                    │
-│              ──► Generate Embeddings (OpenAI)       │
-└─────────────────────────┬───────────────────────────┘
-                          │
-                          ▼
-┌─────────────────────────────────────────────────────┐
-│                   RAG Pipeline                      │
-│  Question ──► Embed ──► pgvector search             │
-│          ──► Top 5 articles ──► GPT-5.4-mini        │
-│          ──► Generated answer + sources             │
-└─────────────────────────────────────────────────────┘
+
+```mermaid
+graph TD
+    subgraph Collection
+        CG[CoinGecko API] -->|prices every 5min| PC[price_collector]
+        RSS[RSS Feeds<br/>CoinDesk · CoinTelegraph · Decrypt] -->|news every 15min| NC[news_collector]
+        CMC[CoinMarketCap scraper<br/>Playwright fallback] -.->|fallback| PC
+    end
+
+    subgraph Queue
+        PC -->|rpush prices_queue| RD[(Redis)]
+        NC -->|rpush news_queue| RD
+    end
+
+    subgraph Processing
+        RD -->|blpop| W[Worker]
+        W -->|upsert tokens + price_snapshots| PG[(PostgreSQL + pgvector)]
+        W -->|insert news + OpenAI embeddings 1536d| PG
+    end
+
+    subgraph API
+        PG --> FA[FastAPI :8000]
+        FA -->|GET /prices /news /stats| FE[React Frontend :3002]
+        FA -->|POST /ask RAG pipeline| FE
+        FA -->|GET POST /reports| FE
+        RG[report_generator<br/>daily 08:00 UTC] -->|POST /reports/generate| FA
+        FA <-->|embed + cosine search pgvector| PG
+        FA <-->|GPT-4o-mini answers + reports| OAI[OpenAI API]
+    end
+
+    subgraph Frontend
+        FE --- PC2[PriceChart recharts]
+        FE --- NP[NewsPanel tabs]
+        FE --- CR[ChatRAG]
+        FE --- RP[ReportsPanel]
+    end
+
+    subgraph Monitoring
+        PG --> GF[Grafana :3000]
+    end
+```
 
 ## Tech Stack
 

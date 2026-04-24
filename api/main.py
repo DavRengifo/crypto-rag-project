@@ -99,6 +99,12 @@ class ReportRequest(BaseModel):
     symbols: list[str]
     period : str = "30d"
 
+class NewsResponse(BaseModel):
+    """Response model for the /news endpoint."""
+    articles: list[NewsItem]
+    filtered: bool
+    symbol  : Optional[str]
+
 # Helper functions
 
 def fetch_history_from_postgres(symbol: str, period: str) -> list[PriceHistoryPoint]:
@@ -127,6 +133,42 @@ def fetch_history_from_postgres(symbol: str, period: str) -> list[PriceHistoryPo
         """, (symbol.upper(), since))
         rows = cursor.fetchall()
         cursor.close()
+
+        # Fall back to CoinGecko if:
+        # - fewer than 10 points (container just started), OR
+        # - oldest point is less than 50% into the requested period
+        #   e.g. for 24h: oldest must be at least 12h ago
+        #        for 7d:  oldest must be at least 3.5d ago
+        insufficient = len(rows) < 10
+        poor_coverage = bool(rows) and rows[0][1] > since + PERIOD_MAP[period] / 2
+        if insufficient or poor_coverage:
+            # Use exact days so CoinGecko returns fine-grained auto-interval:
+            # days=1 → 5-minute data (~288 pts) | days=7 → hourly (~168 pts)
+            # Do NOT pass interval=daily here — let CoinGecko choose granularity
+            days = 1 if period == "24h" else 7
+            coingecko_id = SYMBOL_TO_ID.get(symbol.upper())
+            if not coingecko_id:
+                return []
+            headers = {}
+            if os.getenv("COINGECKO_API_KEY"):
+                headers["x-cg-demo-api-key"] = os.getenv("COINGECKO_API_KEY")
+            resp = requests.get(
+                f"https://api.coingecko.com/api/v3/coins/{coingecko_id}/market_chart",
+                params={"vs_currency": "usd", "days": days},
+                headers=headers,
+                timeout=15
+            )
+            if resp.ok:
+                return [
+                    PriceHistoryPoint(
+                        price_usd  = pt[1],
+                        scraped_at = datetime.fromtimestamp(
+                            pt[0] / 1000, tz=timezone.utc
+                        ).isoformat()
+                    )
+                    for pt in resp.json().get("prices", [])
+                ]
+            return []
 
         return [
             PriceHistoryPoint(
@@ -360,70 +402,88 @@ def get_stats():
             (SELECT COUNT(*) FROM tokens) AS tokens,
             (SELECT COUNT(*) FROM price_snapshots) AS prices,
             (SELECT COUNT(*) FROM news) AS news,
-            (SELECT COUNT(*) FROM embeddings_news) AS embeddings
+            (SELECT COUNT(*) FROM embeddings_news) AS embeddings,
+            (SELECT MAX(scraped_at) FROM price_snapshots) AS last_update
         """
         cursor.execute(query)
         row = cursor.fetchone()
         cursor.close()
-        
+
         return {
             "total_tokens"          : row[0],
             "total_price_snapshots" : row[1],
             "total_news_articles"   : row[2],
-            "total_embeddings"      : row[3]
+            "total_embeddings"      : row[3],
+            "last_update"           : row[4].isoformat() if row[4] else None
         }
         
     finally:
         connection.close()
 
-@app.get("/news", response_model=list[NewsItem])
-def get_news(symbol:  Optional[str] = None):
+@app.get("/news", response_model=NewsResponse)
+def get_news(symbol: Optional[str] = None):
     """
     Return the 20 most recent news articles, ordered by published date.
-    Optionally filter by token symbol.
-    
+    If symbol is provided and no articles found, falls back to general news.
+
     Args:
         symbol (str, optional) : filter by token symbol (e.g. 'BTC')
-    
+
     Returns:
-        list[NewsItem] : List of news articles with title, source, url, and published date.
+        NewsResponse : articles list, filtered flag, and symbol used.
     """
+    def rows_to_items(rows):
+        return [
+            NewsItem(
+                title        = row[0],
+                source       = row[1],
+                url          = row[2],
+                published_at = row[3].isoformat() if row[3] else None
+            )
+            for row in rows
+        ]
+
     connection = get_postgres_connection()
     try:
         cursor = connection.cursor()
-        
+
         if symbol:
-            query = """
-            SELECT n.title, n.source, n.url, n.published_at
-            FROM news n
-            JOIN tokens t ON t.id = n.token_id
-            WHERE t.symbol = %s
-            ORDER BY n.published_at DESC
-            LIMIT 20
-            """
-            cursor.execute(query, (symbol.upper(),))
+            cursor.execute("""
+                SELECT n.title, n.source, n.url, n.published_at
+                FROM news n
+                JOIN tokens t ON t.id = n.token_id
+                WHERE t.symbol = %s
+                ORDER BY n.published_at DESC
+                LIMIT 20
+            """, (symbol.upper(),))
+            rows = cursor.fetchall()
+
+            if rows:
+                cursor.close()
+                return NewsResponse(articles=rows_to_items(rows), filtered=True, symbol=symbol.upper())
+
+            # Fallback: no token-specific news → return general market news
+            cursor.execute("""
+                SELECT title, source, url, published_at
+                FROM news
+                ORDER BY published_at DESC
+                LIMIT 20
+            """)
+            rows = cursor.fetchall()
+            cursor.close()
+            return NewsResponse(articles=rows_to_items(rows), filtered=False, symbol=symbol.upper())
+
         else:
-            query = """
-            SELECT title, source, url, published_at
-            FROM news
-            ORDER BY published_at DESC
-            LIMIT 20
-            """
-            cursor.execute(query)
-            
-        rows = cursor.fetchall()
-        cursor.close()
-        
-        return [
-            NewsItem(
-                title        =row[0],
-                source       =row[1],
-                url          =row[2],
-                published_at =row[3].isoformat() if row[3] else None
-            )
-            for row in rows
-        ] 
-    
+            cursor.execute("""
+                SELECT title, source, url, published_at
+                FROM news
+                ORDER BY published_at DESC
+                LIMIT 20
+            """)
+            rows = cursor.fetchall()
+            cursor.close()
+            return NewsResponse(articles=rows_to_items(rows), filtered=False, symbol=None)
+
     finally:
         connection.close()
 
