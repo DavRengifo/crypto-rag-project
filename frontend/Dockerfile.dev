@@ -1,0 +1,16 @@
+FROM node:20-alpine
+
+ENV NODE_ENV=development
+
+WORKDIR /app
+
+COPY package*.json ./
+
+# Copy node_modules from host — avoids npm install network timeouts in Docker on Mac.
+# Run `npm install` locally whenever package.json changes, then rebuild this image.
+COPY node_modules ./node_modules
+
+COPY src    ./src
+COPY public ./public
+
+CMD ["npm", "start"]

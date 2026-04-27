@@ -944,25 +944,26 @@
 ===================================================== */
 @media (max-width: 1200px) {
   .app-body {
-    grid-template-columns: 220px 1fr;
-    grid-template-rows: 1fr auto;
+    grid-template-columns: 200px 1fr;
+    grid-template-rows: auto auto;
     height: auto;
     overflow: visible;
   }
 
+  /* No sticky: a sticky sidebar covering grid-row 2 hides TopMovers symbols */
   .sidebar {
     grid-row: 1;
     grid-column: 1;
-    height: calc(100vh - 56px);
-    position: sticky;
-    top: 56px;
+    position: static;
+    height: auto;
+    max-height: 65vh;
     overflow-y: auto;
   }
 
   .main-content {
     grid-row: 1;
     grid-column: 2;
-    height: calc(100vh - 56px);
+    height: auto;
   }
 
   .right-panel {
@@ -976,12 +977,24 @@
     border-top: 1px solid #2b3139;
   }
 
-  .right-section { flex: 1; border-bottom: none; border-right: 1px solid #2b3139; }
+  /* min-width:0 prevents flex children from overflowing their container */
+  .right-section {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    border-bottom: none;
+    border-right: 1px solid #2b3139;
+  }
   .right-section:last-child { border-right: none; }
-  .news-section  { flex: 1; border-bottom: none; max-height: 400px; overflow: hidden; }
+  .news-section {
+    flex: 1;
+    min-width: 0;
+    border-bottom: none;
+    max-height: 420px;
+    overflow: hidden;
+  }
 
-  .reports-panel { grid-template-columns: 1fr; }
-
+  .reports-panel     { grid-template-columns: 1fr; }
   .chart-placeholder { height: 280px; }
   .chat-rag          { height: 360px; }
 }
@@ -990,28 +1003,29 @@
    RESPONSIVE — Mobile (<768px)
 ===================================================== */
 @media (max-width: 767px) {
+  /* Switch to flexbox column — avoids implicit grid columns
+     created by the tablet grid-column:2 placement on main-content */
   .app-body {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto auto auto;
+    display: flex;
+    flex-direction: column;
     height: auto;
     overflow: visible;
   }
 
-  /* Sidebar becomes horizontal scrollable strip */
+  /* Sidebar: full-width horizontal scrollable token strip */
   .sidebar {
+    position: static;
+    height: auto;
     display: flex;
     flex-direction: row;
     overflow-x: auto;
     overflow-y: hidden;
     padding: 8px 0;
-    height: auto;
-    position: static;
     border-right: none;
     border-bottom: 1px solid #2b3139;
   }
 
   .sidebar::-webkit-scrollbar { height: 3px; }
-
   .sidebar-header { display: none; }
 
   .sidebar-row {
@@ -1037,31 +1051,44 @@
   .sidebar-price  { font-size: 0.7rem; }
   .sidebar-change { font-size: 0.62rem; }
 
-  /* Main + right panel stack vertically */
+  /* Main content: full width, auto height */
   .main-content {
-    padding: 12px;
     height: auto;
+    padding: 12px;
     gap: 12px;
   }
 
+  /* Right panel: stack TopMovers + News vertically, full width */
   .right-panel {
+    flex-direction: column;
     border-left: none;
     border-top: 1px solid #2b3139;
     height: auto;
     overflow: visible;
   }
 
+  /* Reset tablet overrides: vertical stack → horizontal borders become vertical */
+  .right-section {
+    min-width: 0;
+    overflow: visible;
+    border-right: none;
+    border-bottom: 1px solid #2b3139;
+  }
+
+  .right-section:last-child { border-bottom: none; }
+
+  .news-section {
+    border-right: none;
+    max-height: 380px;
+  }
+
   .chart-placeholder { height: 220px; }
   .chat-rag          { height: 300px; }
 
-  /* Reports stacked */
-  .reports-panel { grid-template-columns: 1fr; }
+  .reports-panel   { grid-template-columns: 1fr; }
   .reports-section { padding: 16px; }
 
-  /* Header: hide stats on mobile */
-  .stats-bar { display: none; }
-
+  .stats-bar      { display: none; }
   .header-tickers { gap: 14px; }
-
-  .app-header { gap: 14px; }
+  .app-header     { gap: 14px; }
 }
