@@ -1,56 +1,61 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { askQuestion } from '../services/api'
 
+const SUGGESTIONS = [
+    'What is happening with Bitcoin today?',
+    'Which crypto has the best momentum this week?',
+    'What are the main risks in the current market?',
+]
+
+const fmtTime = date =>
+    date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
+
 function ChatRAG() {
-    const [messages, setMessages] = useState([
-        {
-            role:    'assistant',
-            content: 'Ask me anything about crypto markets. I answer based on the latest news in our database.'
-        }
-    ])
+    const [messages, setMessages] = useState([{
+        role   : 'assistant',
+        content: 'Ask me anything about crypto markets. I answer based on the latest news in our database.',
+        ts     : new Date(),
+    }])
     const [input,   setInput]   = useState('')
     const [loading, setLoading] = useState(false)
     const bottomRef = useRef(null)
 
-    // Auto-scroll to latest message
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
     }, [messages])
 
-    const handleSend = async () => {
-        const question = input.trim()
-        if (!question || loading) return
+    const send = async (question) => {
+        const q = (question ?? input).trim()
+        if (!q || loading) return
 
-        // Add user message immediately
-        setMessages(prev => [...prev, { role: 'user', content: question }])
+        setMessages(prev => [...prev, { role: 'user', content: q, ts: new Date() }])
         setInput('')
         setLoading(true)
 
         try {
-            const data = await askQuestion(question)
-
-            // Add assistant answer
+            const data = await askQuestion(q)
             setMessages(prev => [...prev, {
-                role:    'assistant',
+                role   : 'assistant',
                 content: data.answer,
-                sources: data.sources
+                sources: data.sources,
+                ts     : new Date(),
             }])
         } catch (err) {
             setMessages(prev => [...prev, {
-                role:    'assistant',
-                content: `Error: ${err.message}`
+                role   : 'assistant',
+                content: `Error: ${err.message}`,
+                ts     : new Date(),
             }])
         } finally {
             setLoading(false)
         }
     }
 
-    const handleKeyDown = (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault()
-            handleSend()
-        }
+    const onKey = e => {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() }
     }
+
+    const showSuggestions = messages.length <= 1 && !loading
 
     return (
         <div className="card chat-rag">
@@ -58,32 +63,44 @@ function ChatRAG() {
 
             <div className="chat-messages">
                 {messages.map((msg, i) => (
-                    <div key={i} className={`chat-message ${msg.role}`}>
-                        <div className="chat-bubble">
-                            {msg.content}
-                        </div>
+                    <div key={i} className={`chat-msg-row ${msg.role}`}>
+                        <div className="chat-bubble">{msg.content}</div>
 
-                        {/* Sources under assistant messages */}
-                        {msg.sources && msg.sources.length > 0 && (
+                        {msg.sources?.length > 0 && (
                             <div className="chat-sources">
-                                <span className="sources-label">Sources:</span>
                                 {msg.sources.map((s, j) => (
-                                    <span key={j} className="source-tag">
-                                        {s.source} · {s.title.slice(0, 40)}…
-                                    </span>
+                                    <a
+                                        key={j}
+                                        href={s.url || '#'}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="source-chip"
+                                    >
+                                        {s.source}
+                                    </a>
                                 ))}
                             </div>
                         )}
+
+                        <div className="chat-ts">{fmtTime(msg.ts)}</div>
                     </div>
                 ))}
 
                 {loading && (
-                    <div className="chat-message assistant">
+                    <div className="chat-msg-row assistant">
                         <div className="chat-bubble loading">
-                            <span className="dot">.</span>
-                            <span className="dot">.</span>
-                            <span className="dot">.</span>
+                            <span className="dot" /><span className="dot" /><span className="dot" />
                         </div>
+                    </div>
+                )}
+
+                {showSuggestions && (
+                    <div className="chat-suggestions">
+                        {SUGGESTIONS.map((s, i) => (
+                            <button key={i} className="suggestion-btn" onClick={() => send(s)}>
+                                {s}
+                            </button>
+                        ))}
                     </div>
                 )}
 
@@ -97,12 +114,12 @@ function ChatRAG() {
                     placeholder="What is happening with Bitcoin?"
                     value={input}
                     onChange={e => setInput(e.target.value)}
-                    onKeyDown={handleKeyDown}
+                    onKeyDown={onKey}
                     disabled={loading}
                 />
                 <button
                     className="chat-send"
-                    onClick={handleSend}
+                    onClick={() => send()}
                     disabled={loading || !input.trim()}
                 >
                     Send

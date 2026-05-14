@@ -30,12 +30,11 @@ export const getStats = async () => {
     return response.json()
 };
 
+// Returns { articles, filtered, symbol } — see NewsPanel for usage
 export const getNews = async (symbol = null) => {
     const url = symbol ? `${API_URL}/news?symbol=${symbol}` : `${API_URL}/news`
     const response = await fetch(url)
-    if (!response.ok) {
-        throw new Error('Failed to fetch news')
-    }
+    if (!response.ok) throw new Error('Failed to fetch news')
     return response.json()
 };
 

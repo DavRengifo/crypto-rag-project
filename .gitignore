@@ -1,3 +1,4 @@
 /chrome-win64
 scrapping/data
 .env
+frontend/node_modules/

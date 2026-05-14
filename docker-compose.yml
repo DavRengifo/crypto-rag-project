@@ -128,12 +128,15 @@ services:
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     container_name: crypto_frontend
     ports:
       - "3002:3000"
     environment:
       - REACT_APP_API_URL=http://localhost:8000
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
     networks:
       - crypto_network
     depends_on:

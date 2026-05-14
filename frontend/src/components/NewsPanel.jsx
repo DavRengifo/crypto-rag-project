@@ -1,67 +1,114 @@
 import React, { useState, useEffect } from 'react'
 import { getNews } from '../services/api'
 
-function NewsPanel({ symbol }) {
-    const [articles, setArticles] = useState([])
-    const [loading, setLoading]   = useState(true)
-    const [error, setError]       = useState(null)
+const SYMBOLS = ['BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'DOGE', 'ADA', 'DOT']
+
+function NewsPanel({ selectedSymbol }) {
+    const [activeTab, setActiveTab] = useState('market')
+
+    // Market tab — general news, loaded once on mount
+    const [marketArticles, setMarketArticles] = useState([])
+    const [marketLoading, setMarketLoading]   = useState(true)
+    const [marketError, setMarketError]       = useState(null)
+
+    // Token tab — local selection, independent of selectedSymbol after first mount
+    const [tokenSymbol, setTokenSymbol]     = useState(selectedSymbol || 'BTC')
+    const [tokenArticles, setTokenArticles] = useState([])
+    const [tokenFiltered, setTokenFiltered] = useState(false)
+    const [tokenLoading, setTokenLoading]   = useState(false)
+    const [tokenError, setTokenError]       = useState(null)
 
     useEffect(() => {
-        const fetchNews = async () => {
-            setLoading(true)
-            setError(null)
-            try {
-                const data = await getNews(symbol)
-                setArticles(data)
-            } catch (err) {
-                setError(err.message)
-            } finally {
-                setLoading(false)
-            }
-        }
-        fetchNews()
-    }, [symbol]) // re-fetch when symbol changes
+        getNews()
+            .then(data => setMarketArticles(data.articles))
+            .catch(err => setMarketError(err.message))
+            .finally(() => setMarketLoading(false))
+    }, [])
 
-    const formatDate = (dateStr) => {
+    useEffect(() => {
+        setTokenLoading(true)
+        setTokenError(null)
+        getNews(tokenSymbol)
+            .then(data => {
+                setTokenArticles(data.articles)
+                setTokenFiltered(data.filtered)
+            })
+            .catch(err => setTokenError(err.message))
+            .finally(() => setTokenLoading(false))
+    }, [tokenSymbol])
+
+    const formatDate = dateStr => {
         if (!dateStr) return ''
-        const d = new Date(dateStr)
-        return d.toLocaleDateString('en-US', {
-            month: 'short',
-            day:   'numeric',
-            hour:  '2-digit',
-            minute:'2-digit'
+        return new Date(dateStr).toLocaleDateString('en-US', {
+            month : 'short',
+            day   : 'numeric',
+            hour  : '2-digit',
+            minute: '2-digit'
         })
     }
 
-    if (loading) return <div className="card">Loading news...</div>
-    if (error)   return <div className="card error">Error: {error}</div>
+    const renderList = (articles, loading, error) => {
+        if (loading) return <div className="news-loading">Loading...</div>
+        if (error)   return <div className="error">{error}</div>
+        if (!articles.length) return <div className="news-empty">No articles found.</div>
+        return (
+            <div className="news-list">
+                {articles.map((article, i) => (
+                    <div key={i} className="news-item">
+                        <div className="news-source">
+                            {article.source} · {formatDate(article.published_at)}
+                        </div>
+                        <a
+                            href={article.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="news-title"
+                        >
+                            {article.title}
+                        </a>
+                    </div>
+                ))}
+            </div>
+        )
+    }
 
     return (
-        <div className="card news-panel">
-            <div className="card-title">
-                Latest News {symbol ? `— ${symbol}` : ''}
+        <div className="news-section">
+            <div className="news-tabs">
+                <button
+                    className={`news-tab ${activeTab === 'market' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('market')}
+                >
+                    Market
+                </button>
+                <button
+                    className={`news-tab ${activeTab === 'token' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('token')}
+                >
+                    Token
+                </button>
             </div>
 
-            {articles.length === 0 ? (
-                <div className="news-empty">No news available for {symbol}</div>
-            ) : (
-                <div className="news-list">
-                    {articles.map((article, i) => (
-                        <div key={i} className="news-item">
-                            <div className="news-source">
-                                {article.source} · {formatDate(article.published_at)}
-                            </div>
-                            <a
-                                href={article.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="news-title"
-                            >
-                                {article.title}
-                            </a>
-                        </div>
-                    ))}
-                </div>
+            {activeTab === 'market' && renderList(marketArticles, marketLoading, marketError)}
+
+            {activeTab === 'token' && (
+                <>
+                    <div className="news-token-row">
+                        <select
+                            className="news-select"
+                            value={tokenSymbol}
+                            onChange={e => setTokenSymbol(e.target.value)}
+                        >
+                            {SYMBOLS.map(s => (
+                                <option key={s} value={s}>{s}</option>
+                            ))}
+                        </select>
+                        {!tokenLoading && !tokenFiltered && (
+                            <span className="news-general-badge">General Market</span>
+                        )}
+                    </div>
+                    {renderList(tokenArticles, tokenLoading, tokenError)}
+                </>
             )}
         </div>
     )

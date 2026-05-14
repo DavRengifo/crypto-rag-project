@@ -1,46 +1,93 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import StatsBar from './components/StatsBar'
 import PriceCards from './components/PriceCards'
 import TopMovers from './components/TopMovers'
 import PriceChart from './components/PriceChart'
 import NewsPanel from './components/NewsPanel'
 import ChatRAG from './components/ChatRAG'
+import ReportsPanel from './components/ReportsPanel'
+import { getPrices } from './services/api'
 import './App.css'
 
 function App() {
-  // selectedSymbol is shared between PriceChart and NewsPanel
-  // when user click on BTC → chart BTC + news BTC
   const [selectedSymbol, setSelectedSymbol] = useState('BTC')
+  const [headerPrices, setHeaderPrices] = useState({})
+
+  useEffect(() => {
+    const load = () =>
+      getPrices()
+        .then(data => {
+          const map = {}
+          data.forEach(p => { map[p.symbol] = p })
+          setHeaderPrices(map)
+        })
+        .catch(console.error)
+    load()
+    const iv = setInterval(load, 30000)
+    return () => clearInterval(iv)
+  }, [])
+
+  const fmt = p =>
+    p ? `$${p.price_usd.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '—'
+  const chg = p =>
+    p ? `${p.change_24h >= 0 ? '+' : ''}${p.change_24h?.toFixed(2)}%` : ''
 
   return (
     <div className="app">
+
+      {/* ── Header ── */}
       <header className="app-header">
-        <h1>₿ Crypto RAG Intelligence</h1>
-        <p className="subtitle">Real-time AI-powered market analysis</p>
+        <div className="header-logo">
+          <span className="logo-icon">₿</span>
+          <span className="logo-text">CryptoRAG</span>
+        </div>
+
+        <div className="header-tickers">
+          {['BTC', 'ETH'].map(sym => {
+            const p = headerPrices[sym]
+            return (
+              <div key={sym} className="header-ticker">
+                <span className="ticker-symbol">{sym}</span>
+                <span className="ticker-price">{fmt(p)}</span>
+                <span className={`ticker-change ${p?.change_24h >= 0 ? 'positive' : 'negative'}`}>
+                  {chg(p)}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+
+        <StatsBar />
       </header>
 
-      <main className="app-main">
-        {/* Row 1: system counters */}
-        <StatsBar />
+      {/* ── 3-column body ── */}
+      <div className="app-body">
 
-        {/* Row 2: real-time prices — clickable to change selectedSymbol */}
-        <PriceCards
-          selectedSymbol={selectedSymbol}
-          onSymbolSelect={setSelectedSymbol}
-        />
+        <aside className="sidebar">
+          <PriceCards
+            selectedSymbol={selectedSymbol}
+            onSymbolSelect={setSelectedSymbol}
+          />
+        </aside>
 
-        {/* Row 3: chart + top movers */}
-        <div className="row-two-cols">
+        <main className="main-content">
           <PriceChart symbol={selectedSymbol} />
-          <TopMovers onSymbolSelect={setSelectedSymbol} />
-        </div>
-
-        {/* Row 4: RAG chat + news */}
-        <div className="row-two-cols">
           <ChatRAG />
-          <NewsPanel symbol={selectedSymbol} />
-        </div>
-      </main>
+        </main>
+
+        <aside className="right-panel">
+          <TopMovers onSymbolSelect={setSelectedSymbol} />
+          <NewsPanel selectedSymbol={selectedSymbol} />
+        </aside>
+
+      </div>
+
+      {/* ── AI Reports — full width below ── */}
+      <section className="reports-section">
+        <div className="section-label">AI Market Reports</div>
+        <ReportsPanel />
+      </section>
+
     </div>
   )
 }
