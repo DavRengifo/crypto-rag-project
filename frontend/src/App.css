@@ -887,6 +887,45 @@
   font-size: 0.8em;
 }
 
+/* GFM tables inside report-content */
+.report-content table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+  margin-bottom: 12px;
+  display: block;
+  overflow-x: auto;
+}
+
+.report-content thead tr {
+  background: #2b3139;
+}
+
+.report-content th {
+  padding: 7px 12px;
+  text-align: left;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #848e9c;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  border-bottom: 1px solid #374151;
+}
+
+.report-content td {
+  padding: 6px 12px;
+  color: #c7cdd4;
+  border-bottom: 1px solid #1e2329;
+  white-space: nowrap;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+}
+
+.report-content tbody tr:hover {
+  background: #1e2329;
+}
+
 .report-sym-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
