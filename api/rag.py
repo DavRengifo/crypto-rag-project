@@ -209,9 +209,18 @@ def get_summary(
     """
     
     # Step 1 — Build price context with trend per token
-    
+
+    def fmt_usd(value: float) -> str:
+        if value >= 1_000_000_000_000:
+            return f"${value / 1_000_000_000_000:.2f}T"
+        if value >= 1_000_000_000:
+            return f"${value / 1_000_000_000:.2f}B"
+        if value >= 1_000_000:
+            return f"${value / 1_000_000:.2f}M"
+        return f"${value:,.2f}"
+
     price_context = ""
-    
+
     for p in prices_data:
         history = price_histories.get(p['symbol'], [])
         if history:
@@ -221,15 +230,15 @@ def get_summary(
             trend_str = f"{'▲' if trend_pct >= 0 else '▼'} {abs(trend_pct):.1f}% over {period}"
         else:
             trend_str = "no history available"
-            
-        price_context += f"""
-            {p['symbol']} ({p['name']})
-            Current price : ${p['price_usd']:,.2f}
-            24h change    : {p['change_24h']:+.2f}%
-            Market cap    : ${p['market_cap']:,.0f}
-            Volume 24h    : ${p['volume_24h']:,.0f}
-            Trend {period}  : {trend_str}
-        """
+
+        price_context += (
+            f"{p['symbol']} ({p['name']})\n"
+            f"  Price     : ${p['price_usd']:,.2f}\n"
+            f"  24h       : {p['change_24h']:+.2f}%\n"
+            f"  Mkt Cap   : {fmt_usd(p['market_cap'])}\n"
+            f"  Volume 24h: {fmt_usd(p['volume_24h'])}\n"
+            f"  Trend {period}: {trend_str}\n\n"
+        )
     
     # Step 2 — Build news context
     
@@ -298,7 +307,8 @@ def get_summary(
         8. Risk Disclaimer
 
         Be factual, cite news sources, use the actual price numbers provided.
-        Format in clean markdown.
+        Format in clean markdown. Use abbreviated values (e.g. $1.64T, $43.3B)
+        for market cap and volume — never write full unformatted integers.
     """     
         
     # Step 7 — Generate report via LLM

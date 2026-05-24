@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { getMarketReport, generateReport } from '../services/api'
 
 const SYMBOLS = ['BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'DOGE', 'ADA', 'DOT']
@@ -79,7 +80,7 @@ function ReportsPanel() {
                     <>
                         <div className="report-meta">Generated {fmtDate(dailyReport.generated_at)}</div>
                         <div className="report-content">
-                            <ReactMarkdown>{dailyReport.content}</ReactMarkdown>
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{dailyReport.content}</ReactMarkdown>
                         </div>
                     </>
                 )}
@@ -132,7 +133,7 @@ function ReportsPanel() {
                             {customReport.symbols.join(', ')} · {customReport.period}
                         </div>
                         <div className="report-content">
-                            <ReactMarkdown>{customReport.content}</ReactMarkdown>
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{customReport.content}</ReactMarkdown>
                         </div>
                     </div>
                 )}
