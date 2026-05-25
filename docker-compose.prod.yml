@@ -1,0 +1,133 @@
+#version: '3.8'
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: postgres_container
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./bdd/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    networks:
+      - crypto_network
+
+  redis:
+    image: redis:alpine
+    container_name: redis_container
+    ports:
+      - "6379:6379"
+    networks:
+      - crypto_network
+
+  worker:
+    build:
+      context: ./worker
+      dockerfile: Dockerfile
+    container_name: crypto_worker
+    restart: unless-stopped
+    env_file:
+      - .env
+    networks:
+      - crypto_network
+    depends_on:
+      - redis
+      - postgres
+      
+  scraper:
+    build:
+      context: ./collectors/scrapers
+      dockerfile: Dockerfile
+    container_name: crypto_scraper
+    env_file:
+      - .env
+    ports:
+      - "8001:8001"
+    networks:
+      - crypto_network
+
+  price_collector:
+    build:
+      context: ./collectors
+      dockerfile: Dockerfile
+    container_name: price_collector
+    command: python price_collector.py
+    restart: unless-stopped
+    env_file:
+      - .env
+    networks:
+      - crypto_network
+    depends_on:
+      - redis
+      - scraper
+
+  news_collector:
+    build:
+      context: ./collectors
+      dockerfile: Dockerfile
+    container_name: news_collector
+    command: python news_collector.py
+    restart: unless-stopped
+    env_file:
+      - .env
+    networks:
+      - crypto_network
+    depends_on:
+      - redis
+  
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: crypto_api
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    networks:
+      - crypto_network
+    depends_on:
+      - postgres
+
+  report_generator:
+    build:
+      context: ./report_generator
+      dockerfile: Dockerfile
+    container_name: report_generator
+    env_file:
+      - .env
+    networks:
+      - crypto_network
+    depends_on:
+      - postgres
+      - api
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+    container_name: crypto_frontend
+    ports:
+      - "3002:80"
+    environment:
+      - REACT_APP_API_URL=http://<IP_PUBLIQUE_GCP>:8000
+    networks:
+      - crypto_network
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  crypto_network:
+    driver: bridge
