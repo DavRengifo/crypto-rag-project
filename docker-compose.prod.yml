@@ -27,9 +27,7 @@ services:
       - crypto_network
 
   worker:
-    build:
-      context: ./worker
-      dockerfile: Dockerfile
+    image: registry.gitlab.com/argau13/crypto-rag-project/worker:latest
     container_name: crypto_worker
     restart: unless-stopped
     env_file:
@@ -41,9 +39,7 @@ services:
       - postgres
       
   scraper:
-    build:
-      context: ./collectors/scrapers
-      dockerfile: Dockerfile
+    image: registry.gitlab.com/argau13/crypto-rag-project/scraper:latest
     container_name: crypto_scraper
     env_file:
       - .env
@@ -51,40 +47,9 @@ services:
       - "8001:8001"
     networks:
       - crypto_network
-
-  price_collector:
-    build:
-      context: ./collectors
-      dockerfile: Dockerfile
-    container_name: price_collector
-    command: python price_collector.py
-    restart: unless-stopped
-    env_file:
-      - .env
-    networks:
-      - crypto_network
-    depends_on:
-      - redis
-      - scraper
-
-  news_collector:
-    build:
-      context: ./collectors
-      dockerfile: Dockerfile
-    container_name: news_collector
-    command: python news_collector.py
-    restart: unless-stopped
-    env_file:
-      - .env
-    networks:
-      - crypto_network
-    depends_on:
-      - redis
   
   api:
-    build:
-      context: ./api
-      dockerfile: Dockerfile
+    image: registry.gitlab.com/argau13/crypto-rag-project/api:latest
     container_name: crypto_api
     restart: unless-stopped
     env_file:
@@ -97,9 +62,7 @@ services:
       - postgres
 
   report_generator:
-    build:
-      context: ./report_generator
-      dockerfile: Dockerfile
+    image: registry.gitlab.com/argau13/crypto-rag-project/report_generator:latest
     container_name: report_generator
     env_file:
       - .env
@@ -111,14 +74,12 @@ services:
     restart: unless-stopped
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile.prod
+    image: registry.gitlab.com/argau13/crypto-rag-project/frontend:latest
     container_name: crypto_frontend
     ports:
       - "3002:80"
     environment:
-      - REACT_APP_API_URL=http://<IP_PUBLIQUE_GCP>:8000
+      - REACT_APP_API_URL=http://34.74.100.36:8000
     networks:
       - crypto_network
     depends_on:
