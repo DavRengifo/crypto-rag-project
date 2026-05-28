@@ -1,0 +1,94 @@
+#version: '3.8'
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: postgres_container
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./bdd/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    networks:
+      - crypto_network
+
+  redis:
+    image: redis:alpine
+    container_name: redis_container
+    ports:
+      - "6379:6379"
+    networks:
+      - crypto_network
+
+  worker:
+    image: registry.gitlab.com/argau13/crypto-rag-project/worker:latest
+    container_name: crypto_worker
+    restart: unless-stopped
+    env_file:
+      - .env
+    networks:
+      - crypto_network
+    depends_on:
+      - redis
+      - postgres
+      
+  scraper:
+    image: registry.gitlab.com/argau13/crypto-rag-project/scraper:latest
+    container_name: crypto_scraper
+    env_file:
+      - .env
+    ports:
+      - "8001:8001"
+    networks:
+      - crypto_network
+  
+  api:
+    image: registry.gitlab.com/argau13/crypto-rag-project/api:latest
+    container_name: crypto_api
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    networks:
+      - crypto_network
+    depends_on:
+      - postgres
+
+  report_generator:
+    image: registry.gitlab.com/argau13/crypto-rag-project/report_generator:latest
+    container_name: report_generator
+    env_file:
+      - .env
+    networks:
+      - crypto_network
+    depends_on:
+      - postgres
+      - api
+    restart: unless-stopped
+
+  frontend:
+    image: registry.gitlab.com/argau13/crypto-rag-project/frontend:latest
+    container_name: crypto_frontend
+    ports:
+      - "3002:80"
+    environment:
+      - REACT_APP_API_URL=http://34.74.100.36:8000
+    networks:
+      - crypto_network
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  crypto_network:
+    driver: bridge

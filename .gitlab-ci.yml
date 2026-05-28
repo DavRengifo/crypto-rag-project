@@ -1,0 +1,51 @@
+stages:
+  - build_and_push
+  - deploy
+
+build:
+  stage: build_and_push
+  script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - docker build -t $CI_REGISTRY_IMAGE/worker:$CI_COMMIT_SHORT_SHA ./worker -f ./worker/Dockerfile
+    - docker build -t $CI_REGISTRY_IMAGE/collectors:$CI_COMMIT_SHORT_SHA ./collectors -f ./collectors/Dockerfile
+    - docker build -t $CI_REGISTRY_IMAGE/scraper:$CI_COMMIT_SHORT_SHA ./collectors/scrapers -f ./collectors/scrapers/Dockerfile
+    - docker build -t $CI_REGISTRY_IMAGE/frontend:$CI_COMMIT_SHORT_SHA ./frontend -f ./frontend/Dockerfile.prod
+    - docker build -t $CI_REGISTRY_IMAGE/api:$CI_COMMIT_SHORT_SHA ./api -f ./api/Dockerfile
+    - docker build -t $CI_REGISTRY_IMAGE/report_generator:$CI_COMMIT_SHORT_SHA ./report_generator -f ./report_generator/Dockerfile
+
+    - docker push $CI_REGISTRY_IMAGE/worker:$CI_COMMIT_SHORT_SHA
+    - docker tag $CI_REGISTRY_IMAGE/worker:$CI_COMMIT_SHORT_SHA $CI_REGISTRY_IMAGE/worker:latest
+    - docker push $CI_REGISTRY_IMAGE/worker:latest
+
+    - docker push $CI_REGISTRY_IMAGE/collectors:$CI_COMMIT_SHORT_SHA
+    - docker tag $CI_REGISTRY_IMAGE/collectors:$CI_COMMIT_SHORT_SHA $CI_REGISTRY_IMAGE/collectors:latest
+    - docker push $CI_REGISTRY_IMAGE/collectors:latest
+
+    - docker push $CI_REGISTRY_IMAGE/scraper:$CI_COMMIT_SHORT_SHA
+    - docker tag $CI_REGISTRY_IMAGE/scraper:$CI_COMMIT_SHORT_SHA $CI_REGISTRY_IMAGE/scraper:latest
+    - docker push $CI_REGISTRY_IMAGE/scraper:latest
+
+    - docker push $CI_REGISTRY_IMAGE/frontend:$CI_COMMIT_SHORT_SHA
+    - docker tag $CI_REGISTRY_IMAGE/frontend:$CI_COMMIT_SHORT_SHA $CI_REGISTRY_IMAGE/frontend:latest
+    - docker push $CI_REGISTRY_IMAGE/frontend:latest
+
+    - docker push $CI_REGISTRY_IMAGE/api:$CI_COMMIT_SHORT_SHA
+    - docker tag $CI_REGISTRY_IMAGE/api:$CI_COMMIT_SHORT_SHA $CI_REGISTRY_IMAGE/api:latest
+    - docker push $CI_REGISTRY_IMAGE/api:latest
+
+    - docker push $CI_REGISTRY_IMAGE/report_generator:$CI_COMMIT_SHORT_SHA
+    - docker tag $CI_REGISTRY_IMAGE/report_generator:$CI_COMMIT_SHORT_SHA $CI_REGISTRY_IMAGE/report_generator:latest
+    - docker push $CI_REGISTRY_IMAGE/report_generator:latest  
+
+  only:
+    - main # or the branch you want to deploy from
+
+deploy:
+  stage: deploy
+  script:
+    - mkdir -p ~/.ssh
+    - cp $SSH_PRIVATE_KEY ~/.ssh/id_rsa
+    - chmod 600 ~/.ssh/id_rsa
+    - ssh -o StrictHostKeyChecking=no $DEPLOY_USER@$DEPLOY_HOST "cd /home/argau13/crypto-rag-project && docker compose -f docker-compose.prod.yml pull && docker compose -f docker-compose.prod.yml up -d"
+  only:
+    - main # or the branch you want to deploy from
