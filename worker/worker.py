@@ -249,15 +249,27 @@ def main():
     client = redis.Redis(
         host=os.getenv("REDIS_HOST", "redis"),
         port=int(os.getenv("REDIS_PORT", 6379)),
-        decode_responses=True
+        decode_responses=True,
+        socket_keepalive=True,
+        socket_timeout=10
     )
     print("Worker is listening for tasks...")
 
     while True:
-        # blpop = Task recuperation with blocking pop (waits for new tasks in the queue)
-        # timeout=5 means it will wait up to 5 seconds for a new task before printing a waiting message
-        task = client.blpop(["prices_queue", "news_queue"], timeout=5)
+        try:
+            # blpop = Task recuperation with blocking pop (waits for new tasks in the queue)
+            # timeout=5 means it will wait up to 5 seconds for a new task before printing a waiting message
+            task = client.blpop(["prices_queue", "news_queue"], timeout=5)
 
+        except redis.exceptions.TimeoutError:
+            print("Redis connection timed out. Retrying...")
+            time.sleep(5)  # Wait before retrying
+            continue
+        except redis.exceptions.ConnectionError as e:
+            print(f"Redis connection error: {e}. Retrying...")
+            time.sleep(5)  # Wait before retrying
+            continue
+        
         if task:
             queue_name, task_data = task  # queue_name tells where the task came from (prices or news)
 
