@@ -11,12 +11,24 @@ build:
     DOCKER_TLS_CERTDIR: ""
   script:
     - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
-    - docker build -t $CI_REGISTRY_IMAGE/worker:$CI_COMMIT_SHORT_SHA ./worker -f ./worker/Dockerfile
-    - docker build -t $CI_REGISTRY_IMAGE/collectors:$CI_COMMIT_SHORT_SHA ./collectors -f ./collectors/Dockerfile
-    - docker build -t $CI_REGISTRY_IMAGE/scraper:$CI_COMMIT_SHORT_SHA ./collectors/scrapers -f ./collectors/scrapers/Dockerfile
-    - docker build --build-arg REACT_APP_API_URL=http://34.74.100.36:8000 -t $CI_REGISTRY_IMAGE/frontend:$CI_COMMIT_SHORT_SHA ./frontend -f ./frontend/Dockerfile.prod
-    - docker build -t $CI_REGISTRY_IMAGE/api:$CI_COMMIT_SHORT_SHA ./api -f ./api/Dockerfile
-    - docker build -t $CI_REGISTRY_IMAGE/report_generator:$CI_COMMIT_SHORT_SHA ./report_generator -f ./report_generator/Dockerfile
+
+    - docker pull $CI_REGISTRY_IMAGE/worker:latest || true
+    - docker build --cache-from $CI_REGISTRY_IMAGE/worker:latest -t $CI_REGISTRY_IMAGE/worker:$CI_COMMIT_SHORT_SHA ./worker -f ./worker/Dockerfile
+
+    - docker pull $CI_REGISTRY_IMAGE/collectors:latest || true
+    - docker build --cache-from $CI_REGISTRY_IMAGE/collectors:latest -t $CI_REGISTRY_IMAGE/collectors:$CI_COMMIT_SHORT_SHA ./collectors -f ./collectors/Dockerfile
+
+    - docker pull $CI_REGISTRY_IMAGE/scraper:latest || true
+    - docker build --cache-from $CI_REGISTRY_IMAGE/scraper:latest -t $CI_REGISTRY_IMAGE/scraper:$CI_COMMIT_SHORT_SHA ./collectors/scrapers -f ./collectors/scrapers/Dockerfile
+
+    - docker pull $CI_REGISTRY_IMAGE/frontend:latest || true
+    - docker build --cache-from $CI_REGISTRY_IMAGE/frontend:latest --build-arg REACT_APP_API_URL=http://34.74.100.36:8000 -t $CI_REGISTRY_IMAGE/frontend:$CI_COMMIT_SHORT_SHA ./frontend -f ./frontend/Dockerfile.prod
+
+    - docker pull $CI_REGISTRY_IMAGE/api:latest || true
+    - docker build --cache-from $CI_REGISTRY_IMAGE/api:latest -t $CI_REGISTRY_IMAGE/api:$CI_COMMIT_SHORT_SHA ./api -f ./api/Dockerfile
+
+    - docker pull $CI_REGISTRY_IMAGE/report_generator:latest || true
+    - docker build --cache-from $CI_REGISTRY_IMAGE/report_generator:latest -t $CI_REGISTRY_IMAGE/report_generator:$CI_COMMIT_SHORT_SHA ./report_generator -f ./report_generator/Dockerfile
 
     - docker push $CI_REGISTRY_IMAGE/worker:$CI_COMMIT_SHORT_SHA
     - docker tag $CI_REGISTRY_IMAGE/worker:$CI_COMMIT_SHORT_SHA $CI_REGISTRY_IMAGE/worker:latest
