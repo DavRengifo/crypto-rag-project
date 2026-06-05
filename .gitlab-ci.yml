@@ -14,7 +14,7 @@ build:
     - docker build -t $CI_REGISTRY_IMAGE/worker:$CI_COMMIT_SHORT_SHA ./worker -f ./worker/Dockerfile
     - docker build -t $CI_REGISTRY_IMAGE/collectors:$CI_COMMIT_SHORT_SHA ./collectors -f ./collectors/Dockerfile
     - docker build -t $CI_REGISTRY_IMAGE/scraper:$CI_COMMIT_SHORT_SHA ./collectors/scrapers -f ./collectors/scrapers/Dockerfile
-    - docker build -t $CI_REGISTRY_IMAGE/frontend:$CI_COMMIT_SHORT_SHA ./frontend -f ./frontend/Dockerfile.prod
+    - docker build --build-arg REACT_APP_API_URL=http://34.74.100.36:8000 -t $CI_REGISTRY_IMAGE/frontend:$CI_COMMIT_SHORT_SHA ./frontend -f ./frontend/Dockerfile.prod
     - docker build -t $CI_REGISTRY_IMAGE/api:$CI_COMMIT_SHORT_SHA ./api -f ./api/Dockerfile
     - docker build -t $CI_REGISTRY_IMAGE/report_generator:$CI_COMMIT_SHORT_SHA ./report_generator -f ./report_generator/Dockerfile
 
