@@ -298,8 +298,14 @@ def get_price_history(symbol: str, period: str = "24h"):
             detail=f"Invalid period. Choose from: {list(PERIOD_MAP.keys())}"
         )
         
-    if period in ["24h", "7d"]:      
-        return fetch_history_from_postgres(symbol, period)
+    if period in ["24h", "7d"]:
+        cache_key = f"history:{symbol.upper()}:{period}"
+        cached = redis_client.get(cache_key)
+        if cached:
+            return json_module.loads(cached)
+        result = fetch_history_from_postgres(symbol, period)
+        redis_client.setex(cache_key, 300, json_module.dumps([r.model_dump() for r in result]))
+        return result
     
     else:
         # CoinGecko call — cache 1 hour to respect rate limits
