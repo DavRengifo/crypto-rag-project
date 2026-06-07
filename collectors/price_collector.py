@@ -65,7 +65,7 @@ class PriceCollector:
             "per_page": 250,
             "sparkline": False
         }
-        response = self.session.get(url, params=params)
+        response = self.session.get(url, params=params, timeout=30)
         response.raise_for_status()  # raises exception if status != 200
         coins = response.json()
 
@@ -169,7 +169,9 @@ def main():
         
         except Exception as e:
             print(f"Cycle failed: {e}. Retrying in 5 minutes...", flush=True)
-            
+
+        if os.getenv("RUN_ONCE"):
+            break
         time.sleep(300)  # Wait for 5 minutes before retrying
             
 if __name__ == "__main__":

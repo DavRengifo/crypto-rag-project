@@ -1,10 +1,13 @@
 import os
 import re
 import time
+import socket
 import redis
 import requests
 import json
 import feedparser
+
+socket.setdefaulttimeout(30)
 from email.utils import parsedate_to_datetime
 from dotenv import load_dotenv
 from bs4 import BeautifulSoup
@@ -197,6 +200,8 @@ def main():
     while True:
         articles = collector.fetch()
         collector.send_to_redis(articles)
+        if os.getenv("RUN_ONCE"):
+            break
         time.sleep(900)  # Wait for 15 minutes before next fetch
         
 if __name__ == "__main__":
