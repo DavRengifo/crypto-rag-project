@@ -59,6 +59,8 @@ build:
 
 deploy:
   stage: deploy
+  tags:
+    - gcp-vm
   script:
     - mkdir -p ~/.ssh
     - cp $SSH_PRIVATE_KEY ~/.ssh/id_rsa
