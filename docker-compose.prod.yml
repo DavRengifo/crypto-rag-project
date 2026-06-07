@@ -5,6 +5,7 @@ services:
     image: pgvector/pgvector:pg16
     container_name: postgres_container
     mem_limit: 200m
+    restart: unless-stopped
     env_file:
       - .env
     environment:
@@ -23,6 +24,7 @@ services:
     image: redis:alpine
     container_name: redis_container
     mem_limit: 64m
+    restart: unless-stopped
     ports:
       - "6379:6379"
     networks:
@@ -45,6 +47,7 @@ services:
     image: registry.gitlab.com/argau13/crypto-rag-project/scraper:latest
     container_name: crypto_scraper
     mem_limit: 300m
+    restart: unless-stopped
     env_file:
       - .env
     ports:
