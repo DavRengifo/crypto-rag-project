@@ -22,7 +22,7 @@ build:
     - docker build --cache-from $CI_REGISTRY_IMAGE/scraper:latest -t $CI_REGISTRY_IMAGE/scraper:$CI_COMMIT_SHORT_SHA ./collectors/scrapers -f ./collectors/scrapers/Dockerfile
 
     - docker pull $CI_REGISTRY_IMAGE/frontend:latest || true
-    - docker build --cache-from $CI_REGISTRY_IMAGE/frontend:latest --build-arg REACT_APP_API_URL=http://34.74.100.36:8000 -t $CI_REGISTRY_IMAGE/frontend:$CI_COMMIT_SHORT_SHA ./frontend -f ./frontend/Dockerfile.prod
+    - docker build --platform linux/amd64 --cache-from $CI_REGISTRY_IMAGE/frontend:latest --build-arg REACT_APP_API_URL=https://coinsprophet.davrengifo.dev/api -t $CI_REGISTRY_IMAGE/frontend:$CI_COMMIT_SHORT_SHA ./frontend -f ./frontend/Dockerfile.prod
 
     - docker pull $CI_REGISTRY_IMAGE/api:latest || true
     - docker build --cache-from $CI_REGISTRY_IMAGE/api:latest -t $CI_REGISTRY_IMAGE/api:$CI_COMMIT_SHORT_SHA ./api -f ./api/Dockerfile

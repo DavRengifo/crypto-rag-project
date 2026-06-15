@@ -86,13 +86,26 @@ services:
     image: registry.gitlab.com/argau13/crypto-rag-project/frontend:latest
     container_name: crypto_frontend
     mem_limit: 64m
-    ports:
-      - "80:80"
-    environment:
-      - REACT_APP_API_URL=http://34.74.100.36:8000
     networks:
       - crypto_network
     depends_on:
+      - api
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    container_name: crypto_nginx
+    mem_limit: 32m
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    networks:
+      - crypto_network
+    depends_on:
+      - frontend
       - api
     restart: unless-stopped
 
