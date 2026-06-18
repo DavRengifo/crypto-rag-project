@@ -74,6 +74,7 @@ function NewsPanel({ selectedSymbol }) {
 
     return (
         <div className="news-section">
+            <div className="right-section-title">Crypto News</div>
             <div className="news-tabs">
                 <button
                     className={`news-tab ${activeTab === 'market' ? 'active' : ''}`}

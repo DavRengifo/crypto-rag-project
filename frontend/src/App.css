@@ -132,6 +132,8 @@
   overflow: hidden;
 }
 
+.sidebar, .main-content, .right-panel { min-width: 0; }
+
 /* =====================================================
    LEFT SIDEBAR
 ===================================================== */
@@ -241,19 +243,21 @@
    RIGHT PANEL
 ===================================================== */
 .right-panel {
-  background: #161a1e;
-  border-left: 1px solid #2b3139;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+  gap: 14px;
+  padding: 16px;
 }
 
 .right-panel::-webkit-scrollbar { width: 4px; }
 .right-panel::-webkit-scrollbar-thumb { background: #2b3139; border-radius: 2px; }
 
 .right-section {
+  background: #1e2329;
+  border: 1px solid #2b3139;
+  border-radius: 8px;
   padding: 14px 16px;
-  border-bottom: 1px solid #2b3139;
   flex-shrink: 0;
 }
 
@@ -471,12 +475,16 @@
    NEWS PANEL
 ===================================================== */
 .news-section {
+  background: #1e2329;
+  border: 1px solid #2b3139;
+  border-radius: 8px;
   padding: 14px 16px;
-  flex: 1;
+  max-height: 420px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
   min-height: 0;
+  flex-shrink: 0;
 }
 
 .news-tabs {
@@ -776,6 +784,7 @@
   border: 1px solid #2b3139;
   border-radius: 8px;
   padding: 20px;
+  min-width: 0;
 }
 
 .report-card-header {
@@ -850,13 +859,8 @@
   font-size: 0.83rem;
   line-height: 1.65;
   color: #c7cdd4;
-  max-height: 400px;
-  overflow-y: auto;
-  padding-right: 6px;
+  word-break: break-word;
 }
-
-.report-content::-webkit-scrollbar { width: 3px; }
-.report-content::-webkit-scrollbar-thumb { background: #2b3139; border-radius: 2px; }
 
 /* react-markdown styles inside report-content */
 .report-content h1,
@@ -895,6 +899,7 @@
   margin-bottom: 12px;
   display: block;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .report-content thead tr {
@@ -997,6 +1002,11 @@
     height: auto;
     max-height: 65vh;
     overflow-y: auto;
+    align-self: start;
+    background: #1e2329;
+    border: 1px solid #2b3139;
+    border-radius: 8px;
+    margin: 20px 0 0 16px;
   }
 
   .main-content {
@@ -1010,10 +1020,10 @@
     grid-column: 1 / -1;
     display: flex;
     flex-direction: row;
+    gap: 14px;
     height: auto;
     overflow: visible;
-    border-left: none;
-    border-top: 1px solid #2b3139;
+    padding: 16px;
   }
 
   /* min-width:0 prevents flex children from overflowing their container */
@@ -1021,14 +1031,10 @@
     flex: 1;
     min-width: 0;
     overflow: hidden;
-    border-bottom: none;
-    border-right: 1px solid #2b3139;
   }
-  .right-section:last-child { border-right: none; }
   .news-section {
     flex: 1;
     min-width: 0;
-    border-bottom: none;
     max-height: 420px;
     overflow: hidden;
   }
@@ -1055,12 +1061,16 @@
   .sidebar {
     position: static;
     height: auto;
+    align-self: stretch;
+    margin: 0;
     display: flex;
     flex-direction: row;
     overflow-x: auto;
     overflow-y: hidden;
     padding: 8px 0;
-    border-right: none;
+    background: #161a1e;
+    border: none;
+    border-radius: 0;
     border-bottom: 1px solid #2b3139;
   }
 
@@ -1097,37 +1107,45 @@
     gap: 12px;
   }
 
-  /* Right panel: stack TopMovers + News vertically, full width */
+  /* Right panel: TopMovers + News as stacked cards */
   .right-panel {
     flex-direction: column;
-    border-left: none;
-    border-top: 1px solid #2b3139;
+    gap: 12px;
+    margin: 0 12px 12px;
+    padding: 0;
     height: auto;
-    overflow: visible;
   }
 
-  /* Reset tablet overrides: vertical stack → horizontal borders become vertical */
-  .right-section {
-    min-width: 0;
-    overflow: visible;
-    border-right: none;
-    border-bottom: 1px solid #2b3139;
-  }
+  .right-section { min-width: 0; }
 
-  .right-section:last-child { border-bottom: none; }
-
-  .news-section {
-    border-right: none;
-    max-height: 380px;
-  }
+  .news-section { max-height: 380px; }
 
   .chart-placeholder { height: 220px; }
   .chat-rag          { height: 300px; }
 
   .reports-panel   { grid-template-columns: 1fr; }
-  .reports-section { padding: 16px; }
+  .reports-section { padding: 16px; overflow-x: hidden; }
+
+  /* Hide price in horizontal token strip — too long for 72px slot */
+  .sidebar-price  { display: none; }
+  .sidebar-change { font-size: 0.65rem; font-weight: 600; }
+
+  .main-content { overflow-x: hidden; }
+
+  .report-content { font-size: 0.74rem; line-height: 1.5; }
+  .report-content h1 { font-size: 0.82rem; }
+  .report-content h2 { font-size: 0.78rem; }
+  .report-content h3 { font-size: 0.74rem; }
 
   .stats-bar      { display: none; }
-  .header-tickers { gap: 14px; }
-  .app-header     { gap: 14px; }
+  .header-tickers { display: none; }
+  .app-header     { gap: 16px; }
+}
+
+/* =====================================================
+   RESPONSIVE — Small mobile (<480px)
+===================================================== */
+@media (max-width: 480px) {
+  .report-sym-grid { grid-template-columns: repeat(2, 1fr); }
+  .app-header { padding: 0 12px; }
 }

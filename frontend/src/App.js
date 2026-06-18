@@ -38,8 +38,11 @@ function App() {
       {/* ── Header ── */}
       <header className="app-header">
         <div className="header-logo">
-          <span className="logo-icon">₿</span>
-          <span className="logo-text">CryptoRAG</span>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{flexShrink:0}}>
+            <polyline points="2,18 8,11 13,15 22,4" stroke="#f0b90b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+            <circle cx="22" cy="4" r="2.5" fill="#f0b90b"/>
+          </svg>
+          <span className="logo-text">CoinsProphet</span>
         </div>
 
         <div className="header-tickers">
