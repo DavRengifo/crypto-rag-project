@@ -19,6 +19,11 @@ services:
       - ./bdd/schema.sql:/docker-entrypoint-initdb.d/schema.sql
     networks:
       - crypto_network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   redis:
     image: redis:alpine
@@ -29,6 +34,11 @@ services:
       - "6379:6379"
     networks:
       - crypto_network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
 
   worker:
     image: registry.gitlab.com/argau13/crypto-rag-project/worker:latest
@@ -42,6 +52,11 @@ services:
     depends_on:
       - redis
       - postgres
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   scraper:
     image: registry.gitlab.com/argau13/crypto-rag-project/scraper:latest
@@ -54,6 +69,11 @@ services:
       - "8001:8001"
     networks:
       - crypto_network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   api:
     image: registry.gitlab.com/argau13/crypto-rag-project/api:latest
@@ -68,6 +88,11 @@ services:
       - crypto_network
     depends_on:
       - postgres
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   report_generator:
     image: registry.gitlab.com/argau13/crypto-rag-project/report_generator:latest
@@ -81,6 +106,11 @@ services:
       - postgres
       - api
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   frontend:
     image: registry.gitlab.com/argau13/crypto-rag-project/frontend:latest
@@ -91,6 +121,11 @@ services:
     depends_on:
       - api
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
 
   nginx:
     image: nginx:alpine
@@ -108,6 +143,11 @@ services:
       - frontend
       - api
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
 
 volumes:
   postgres_data:
