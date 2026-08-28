@@ -65,6 +65,6 @@ deploy:
     - mkdir -p ~/.ssh
     - cp $SSH_PRIVATE_KEY ~/.ssh/id_rsa
     - chmod 600 ~/.ssh/id_rsa
-    - ssh -o StrictHostKeyChecking=no $DEPLOY_USER@$DEPLOY_HOST "cd /home/argau13/crypto-rag-project && docker compose -f docker-compose.prod.yml pull && docker compose -f docker-compose.prod.yml up -d && docker system prune -af"
+    - ssh -o StrictHostKeyChecking=no $DEPLOY_USER@$DEPLOY_HOST "cd /home/argau13/coinsprophet && docker compose -f docker-compose.prod.yml pull && docker compose -f docker-compose.prod.yml up -d && docker system prune -af"
   only:
     - main # or the branch you want to deploy from

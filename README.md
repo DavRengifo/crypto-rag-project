@@ -1,4 +1,4 @@
-# Crypto RAG Intelligence Platform
+# CoinsProphet
 
 > Real-time AI-powered cryptocurrency market analysis using
 > Retrieval-Augmented Generation (RAG) over live market data.
@@ -64,7 +64,7 @@ graph LR
 ## Project Structure
 
 ```
-crypto-rag-project/
+CoinsProphet/
 ├── api/
 │   ├── main.py              # FastAPI endpoints (/prices, /news, /ask, /reports…)
 │   ├── rag.py               # RAG pipeline (embed, pgvector search, GPT-5.4-mini)
@@ -103,7 +103,11 @@ crypto-rag-project/
 ├── bdd/
 │   └── schema.sql           # PostgreSQL + pgvector schema
 ├── grafana/                 # Dashboard configuration
-├── docker-compose.yml       # 10 services orchestration
+├── nginx/
+│   └── nginx.conf           # Reverse proxy + HTTPS (production)
+├── docker-compose.yml       # 10 services orchestration (dev)
+├── docker-compose.prod.yml  # Production stack (registry images + nginx)
+├── .gitlab-ci.yml           # CI/CD: build & push images, deploy to GCP VM
 └── .env.exemple             # Environment variables template
 ```
 
@@ -133,8 +137,8 @@ crypto-rag-project/
 ### Installation
 
 ```bash
-git clone https://github.com/DavRengifo/crypto-rag-project.git
-cd crypto-rag-project
+git clone https://github.com/DavRengifo/CoinsProphet.git
+cd CoinsProphet
 
 # Configure environment variables
 cp .env.exemple .env
@@ -192,13 +196,25 @@ Ask a natural language question about the crypto market.
 
 Returns real-time prices for all tracked tokens (BTC, ETH, SOL, BNB, ADA, XRP, DOGE, DOT).
 
+### `GET /prices/{symbol}/history`
+
+Returns price history for a token (24h / 7d periods, cached 5 min).
+
+### `GET /prices/top-movers`
+
+Returns tokens with the largest 24h price change.
+
+### `GET /stats`
+
+Returns aggregate platform stats (e.g. total tokens tracked, news articles collected).
+
 ### `GET /news?symbol=BTC`
 
 Returns latest news articles. Filters by token if `symbol` is provided, falls back to general market news.
 
-### `GET /reports/latest`
+### `GET /reports/market/latest`
 
-Returns the latest auto-generated daily market report (Markdown).
+Returns the latest auto-generated daily market report (Markdown), cached in Redis for 1 hour.
 
 ### `POST /reports/generate`
 
@@ -237,9 +253,9 @@ reports         -- generated market reports (daily + custom), with symbols[]
 - [x] REST API (FastAPI)
 - [x] React frontend — price charts, top movers, news, chat, reports
 - [x] Daily market report generator
+- [x] CI/CD (GitLab CI — build, push, deploy)
+- [x] Cloud deployment (GCP VM + nginx reverse proxy + HTTPS)
 - [ ] Sentiment analysis
-- [ ] CI/CD (GitHub Actions)
-- [ ] Cloud deployment (Oracle Free Tier)
 - [ ] User authentication + subscriptions (V2)
 - [ ] Price trend predictions (V3)
 

@@ -16,7 +16,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./bdd/schema.sql:/docker-entrypoint-initdb.d/schema.sql
     networks:
-      - crypto_network
+      - coinsprophet_network
 
   redis:
     image: redis:alpine
@@ -24,18 +24,18 @@ services:
     ports:
       - "6379:6379"
     networks:
-      - crypto_network
+      - coinsprophet_network
 
   worker:
     build:
       context: ./worker
       dockerfile: Dockerfile
-    container_name: crypto_worker
+    container_name: coinsprophet_worker
     restart: unless-stopped
     env_file:
       - .env
     networks:
-      - crypto_network
+      - coinsprophet_network
     depends_on:
       - redis
       - postgres
@@ -44,13 +44,13 @@ services:
     build:
       context: ./collectors/scrapers
       dockerfile: Dockerfile
-    container_name: crypto_scraper
+    container_name: coinsprophet_scraper
     env_file:
       - .env
     ports:
       - "8001:8001"
     networks:
-      - crypto_network
+      - coinsprophet_network
 
   price_collector:
     build:
@@ -62,7 +62,7 @@ services:
     env_file:
       - .env
     networks:
-      - crypto_network
+      - coinsprophet_network
     depends_on:
       - redis
       - scraper
@@ -77,7 +77,7 @@ services:
     env_file:
       - .env
     networks:
-      - crypto_network
+      - coinsprophet_network
     depends_on:
       - redis
   
@@ -85,14 +85,14 @@ services:
     build:
       context: ./api
       dockerfile: Dockerfile
-    container_name: crypto_api
+    container_name: coinsprophet_api
     restart: unless-stopped
     env_file:
       - .env
     ports:
       - "8000:8000"
     networks:
-      - crypto_network
+      - coinsprophet_network
     depends_on:
       - postgres
 
@@ -104,7 +104,7 @@ services:
     env_file:
       - .env
     networks:
-      - crypto_network
+      - coinsprophet_network
     depends_on:
       - postgres
       - api
@@ -118,7 +118,7 @@ services:
     volumes:
       - grafana_data:/var/lib/grafana
     networks:
-      - crypto_network
+      - coinsprophet_network
     environment:
       - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER}
       - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD}
@@ -129,7 +129,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile.dev
-    container_name: crypto_frontend
+    container_name: coinsprophet_frontend
     ports:
       - "3002:3000"
     environment:
@@ -138,7 +138,7 @@ services:
       - ./frontend/src:/app/src
       - ./frontend/public:/app/public
     networks:
-      - crypto_network
+      - coinsprophet_network
     depends_on:
       - api
     restart: unless-stopped
@@ -148,5 +148,5 @@ volumes:
   grafana_data:
 
 networks:
-  crypto_network:
+  coinsprophet_network:
     driver: bridge

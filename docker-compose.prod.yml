@@ -41,7 +41,7 @@ services:
         max-file: "2"
 
   worker:
-    image: registry.gitlab.com/argau13/crypto-rag-project/worker:latest
+    image: registry.gitlab.com/argau13/coinsprophet/worker:latest
     container_name: crypto_worker
     mem_limit: 128m
     restart: unless-stopped
@@ -59,7 +59,7 @@ services:
         max-file: "3"
 
   scraper:
-    image: registry.gitlab.com/argau13/crypto-rag-project/scraper:latest
+    image: registry.gitlab.com/argau13/coinsprophet/scraper:latest
     container_name: crypto_scraper
     mem_limit: 300m
     restart: unless-stopped
@@ -76,7 +76,7 @@ services:
         max-file: "3"
 
   api:
-    image: registry.gitlab.com/argau13/crypto-rag-project/api:latest
+    image: registry.gitlab.com/argau13/coinsprophet/api:latest
     container_name: crypto_api
     mem_limit: 256m
     restart: unless-stopped
@@ -95,7 +95,7 @@ services:
         max-file: "3"
 
   report_generator:
-    image: registry.gitlab.com/argau13/crypto-rag-project/report_generator:latest
+    image: registry.gitlab.com/argau13/coinsprophet/report_generator:latest
     container_name: report_generator
     mem_limit: 300m
     env_file:
@@ -113,7 +113,7 @@ services:
         max-file: "3"
 
   frontend:
-    image: registry.gitlab.com/argau13/crypto-rag-project/frontend:latest
+    image: registry.gitlab.com/argau13/coinsprophet/frontend:latest
     container_name: crypto_frontend
     mem_limit: 64m
     networks:
