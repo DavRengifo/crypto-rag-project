@@ -153,6 +153,8 @@ services:
 
 volumes:
   postgres_data:
+    external: true
+    name: crypto-rag-project_postgres_data
 
 networks:
   crypto_network:
